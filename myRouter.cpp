@@ -53,14 +53,11 @@ void myRouter::launchRouter() {
         return;
     }
     printf("Server wait client accept...\n");
-    pthread_t thread;
-    if (pthread_create(&thread, NULL, startListenPort, &server_socket) != 0) {
+    pthread_t receiving_thread;
+    if (pthread_create(&receiving_thread, NULL, startListenPort, &server_socket) != 0) {
         perror("pthread create fail");
         return;
     }
-
-    // Connect neighbors.
-    connectedNeighbor();
     
     // Input command to send message to other neighbor.
     struct msg_package *command;
@@ -74,6 +71,9 @@ void myRouter::launchRouter() {
     pthread_cond_signal(&buf_cond);
     pthread_mutex_unlock(&buf_mutex);
 
+    // Connect neighbors.
+    connectedNeighbor();
+
     
     // Thread for sending message.
     pthread_t sending_thread;
@@ -84,10 +84,12 @@ void myRouter::launchRouter() {
 
     command = new msg_package();
     // Loop for user to input message for sending.
-    while(strncmp(command->msg, "quit", 4) != 0) {
+    while(1) {
         // Send message.
         printf("Server:>");
         scanf("%s",command->msg);
+        if (strncmp(command->msg, "quit", 4) == 0) break;
+
         printf("Wait to sending...\n");
 
         pthread_mutex_lock(&buf_mutex);
@@ -99,7 +101,8 @@ void myRouter::launchRouter() {
         command = new msg_package();
     }
     printf("Router done...\n");
-
+    pthread_cancel(sending_thread);
+    pthread_cancel(receiving_thread);
 }
 
 /**

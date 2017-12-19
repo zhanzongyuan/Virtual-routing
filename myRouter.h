@@ -29,6 +29,8 @@
 
 using namespace std;
 
+// TODO: Include route class
+
 /**
  * Message that communicate between routers with.
  * code: 
@@ -83,7 +85,7 @@ private:
     int server_socket;
 
     const char* CLIENT_IP = "127.0.0.1";
-    const int CLIENT_PORT = 23334;
+    const int CLIENT_PORT = 23333;
     struct sockaddr_in client_address;   // Local address used to send msg.
 
 
