@@ -56,6 +56,7 @@ struct neighbor_status {
     int client_socket;
     bool is_connected;
     // TODO: Record time when detect neighbor that can be used to judge if timeout.
+    
 };
 
 
@@ -86,7 +87,7 @@ private:
 
     const char* CLIENT_IP = "127.0.0.1";
     const int CLIENT_PORT = 23333;
-    struct sockaddr_in client_address;   // Local address used to send msg.
+    static struct sockaddr_in client_address;   // Local address used to send msg.
 
 
     // TODO: Complete multi neighbor.
@@ -96,6 +97,8 @@ private:
     static queue<struct msg_package*> sending_msg_buf;
     static pthread_mutex_t buf_mutex;
     static pthread_cond_t buf_cond;
+    static char* transport_result;
+    
     
     /**
      * Thread to send data in loop.
@@ -110,12 +113,22 @@ private:
      * Deal with message receive.
      */
     static void *receiveData(void *v_session_socket);
-
+    /**
+     * This function detect neighbors connectable periodically.
+     */
+    static void *detectNeighbor(void* fd);
     
+    
+    /**
+     * Rebuild some socket when the connect is done.
+     */
+    static void rebuildNeighborSocket(int i);
     /**
      * Try to connect all neighbors.
      */
-    void connectedNeighbor();
+    void connectAllNeighbors();
+    
+    
     
     /**
      * Initial the address of server.
@@ -125,10 +138,6 @@ private:
      * Initial the address of client.
      */
     void initialClientAddress();
-    /**
-     * Initial the address of neighbor host.
-     */
-    void initialNeigborAddress();
     
     /**
      * Create socket for receive socket.
@@ -143,6 +152,11 @@ private:
      */
     void bindClientSocket();
     
+    
+    /**
+     * Print result of transport.
+     */
+    void printResult(bool has_result);
 };
 
 

@@ -1,12 +1,12 @@
 #include "myRouter.h"
 
-
 struct neighbor_status* myRouter::neighbor_list = NULL;
 queue<struct msg_package*> myRouter::sending_msg_buf = queue<struct msg_package*>();
 int myRouter::neighbor_count = 0;
 pthread_mutex_t myRouter::buf_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t myRouter::buf_cond = PTHREAD_COND_INITIALIZER;
-
+struct sockaddr_in myRouter::client_address = {0};
+char* myRouter::transport_result = new char[256];
 
 myRouter::myRouter() {
     neighbor_list = new neighbor_status[4];
@@ -20,6 +20,7 @@ myRouter::~myRouter() {
 void myRouter::addNeighborRouter(const char* neighbor_ip, int neighbor_port) {
     strcpy(neighbor_list[neighbor_count].neighbor_ip, neighbor_ip);
     neighbor_list[neighbor_count].neighbor_port = neighbor_port;
+    neighbor_list[neighbor_count].is_connected = false;
     
     sockaddr_in neighbor_address;
     memset(&neighbor_address, 0, sizeof(neighbor_address));
@@ -30,6 +31,8 @@ void myRouter::addNeighborRouter(const char* neighbor_ip, int neighbor_port) {
     neighbor_list[neighbor_count].neighbor_address = neighbor_address;
     neighbor_count++;
 }
+
+
 /**
 * Launch router to connect with neighbor router.
 */
@@ -52,53 +55,49 @@ void myRouter::launchRouter() {
         perror("listen fail");
         return;
     }
-    printf("Server wait client accept...\n");
+    printf("Router launching");
+    printResult(false);
+    
     pthread_t receiving_thread;
     if (pthread_create(&receiving_thread, NULL, startListenPort, &server_socket) != 0) {
-        perror("pthread create fail");
+        perror("Receiving pthread create fail");
         return;
     }
     
-    // Input command to send message to other neighbor.
-    struct msg_package *command;
-    command = new msg_package();
-    printf("Server:>");
-    scanf("%s",command->msg);
-    // TODO: Parser command
-
-    pthread_mutex_lock(&buf_mutex);
-    sending_msg_buf.push(command);
-    pthread_cond_signal(&buf_cond);
-    pthread_mutex_unlock(&buf_mutex);
-
-    // Connect neighbors.
-    connectedNeighbor();
-
+    // Thread for detect neighbor and connect them periodically.
+    pthread_t detecting_thread;
+    if (pthread_create(&detecting_thread, NULL, detectNeighbor, NULL)) {
+        perror("Detecting pthread create fail");
+        return;
+    }
     
     // Thread for sending message.
     pthread_t sending_thread;
     if (pthread_create(&sending_thread, NULL, sendData, NULL)) {
-        perror("pthread create fail");
+        perror("Sending pthread create fail");
         return;
     }
 
+    // Input command to send message to other neighbor.
+    struct msg_package *command;
     command = new msg_package();
+    // Send message.
+    printf("router@name# ");
+    scanf("%s",command->msg);
+    
     // Loop for user to input message for sending.
-    while(1) {
-        // Send message.
-        printf("Server:>");
-        scanf("%s",command->msg);
-        if (strncmp(command->msg, "quit", 4) == 0) break;
-
-        printf("Wait to sending...\n");
-
+    while(strncmp(command->msg, "quit", 4) != 0) {
         pthread_mutex_lock(&buf_mutex);
         sending_msg_buf.push(command);
         pthread_cond_signal(&buf_cond);
         pthread_mutex_unlock(&buf_mutex);
+        
+        printResult(true);
 
-        printf("Sending successfully...\n");
         command = new msg_package();
+        // Send message.
+        printf("router@name# ");
+        scanf("%s",command->msg);
     }
     printf("Router done...\n");
     pthread_cancel(sending_thread);
@@ -110,19 +109,37 @@ void myRouter::launchRouter() {
  */
 void* myRouter::sendData(void *fd) {
     // Send message.
+    char response[256];
     while (1) {
-        // pthread_mutex_lock(&buf_mutex);
-        // pthread_cond_wait(&buf_cond, &buf_mutex);
+        pthread_mutex_lock(&buf_mutex);
+        pthread_cond_wait(&buf_cond, &buf_mutex);
         while (sending_msg_buf.size() != 0) {
             struct msg_package* sending_message = sending_msg_buf.front();
             sending_msg_buf.pop();
             
-            for (int i = 0; i < neighbor_count; i++)
-                if (neighbor_list[i].is_connected)
+            for (int i = 0; i < neighbor_count; i++) {
+                if (neighbor_list[i].is_connected) {
                     send(neighbor_list[i].client_socket, sending_message->msg, strlen(sending_message->msg)+1, 0);
+                    
+                    if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
+                        // If send data error, it infer that the neighbor host is done.
+                        rebuildNeighborSocket(i);
+                        neighbor_list[i].is_connected = false;
+                        
+                        strncpy(transport_result, "Error: Neighbor is done.", 256);
+                    }
+                    else {
+                        strncpy(transport_result, "Send message successfully.", 256);
+                    }
+                }
+                else {
+                    strncpy(transport_result, "Error: Connected refused.", 256);
+                }
+            }
+            
             delete sending_message;
         }
-        // pthread_mutex_unlock(&buf_mutex);
+        pthread_mutex_unlock(&buf_mutex);
     }
 }
 
@@ -144,7 +161,10 @@ void* myRouter::startListenPort(void *v_server_socket) {
                ntohs(temp_client_address.sin_port));
 
         
-        printf("\n");
+        printf("router@name# ");
+        // Reflesh input to screen.
+        fflush(stdout);
+        
         if (*session_socket == -1) {
             perror("accept fail");
         }
@@ -173,13 +193,25 @@ void* myRouter::receiveData(void *v_session_socket) {
         // Receive message and print it.
         if (recv(session_socket, recvbuf, 256, 0) <= 0) {
             perror("\nClient done...\n");
-            printf("Server:>");
+            printf("\nrouter@name# ");
+            
+            // Reflesh input to screen.
+            fflush(stdout);
             break;
         }
         else {
-            printf("\nCli:> %s\n",recvbuf);
+            if (strncmp(recvbuf, "DETECT", 4) == 0) {
+                send(session_socket, "OK", 3, 0);
+                continue;
+            }
+            printf("\nneighbor-router:  %s\n",recvbuf);
             // TODO: Parse the data and deal with it by it style.
-            printf("Server:>");
+            printf("\nrouter@name# ");
+            // Response request.
+            send(session_socket, "OK", 3, 0);
+            
+            // Reflesh input to screen.
+            fflush(stdout);
         }
     }
 
@@ -190,11 +222,79 @@ void* myRouter::receiveData(void *v_session_socket) {
     
 }
 
+/**
+ * This function detect neighbors connectable periodically.
+ */
+void *myRouter::detectNeighbor(void* fd){
+    char response[256];
+    while (1) {
+        //printf("\nDetecting neighbors...\n");
+        for (int i = 0; i < neighbor_count; i++) {
+            if (neighbor_list[i].is_connected) {
+                send(neighbor_list[i].client_socket, "DETECT", strlen("DETECT")+1, 0);
+                if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
+                    printf("Some neighbors done\n");
+                    close(neighbor_list[i].client_socket);
+                    rebuildNeighborSocket(i);
+                    neighbor_list[i].is_connected = false;
+                    printf("router@name# ");
+                    // Reflesh input to screen.
+                    fflush(stdout);
+                }
+            }
+            else {
+                // Try connect.
+                int client_socket = neighbor_list[i].client_socket;
+                if (connect(client_socket, (struct sockaddr*)&neighbor_list[i].neighbor_address, sizeof(sockaddr_in)) == -1) {
+                    // perror("connect fail");
+                    neighbor_list[i].is_connected = false;
+                    rebuildNeighborSocket(i);
+                }
+                else {
+                    printf("Connect successfully\n");
+                    neighbor_list[i].is_connected = true;
+                    printf("router@name# ");
+                    // Reflesh input to screen.
+                    fflush(stdout);
+                }
+            }
+        }
+        // TODO: Tell link change.
+        
+        // 1 sec = 1000 ms = 1000000 us
+        // 5000000 us = 5 sec
+        usleep(5000000);
+    }
+}
+
+
+/**
+ * Rebuild some socket when the connect is done.
+ */
+void myRouter::rebuildNeighborSocket(int i){
+    // Create client socket that can be use to connet and send message to server.
+    int client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket == -1) {
+        perror("create socket fail");
+    }
+    // Make socket can reuse the same port.
+    int opt = 1;
+    if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
+        perror("setsockopt");
+    }
+    // bind !!!must use ::bind , for std::bind is default.
+    // Just bind socket with address.
+    socklen_t addrlen = sizeof(struct sockaddr);
+    if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
+        perror("bind fail");
+    }
+    neighbor_list[i].client_socket = client_socket;
+}
 
 /**
  * Try to connect all neighbors.
  */
-void myRouter::connectedNeighbor(){
+void myRouter::connectAllNeighbors(){
     socklen_t addrlen = sizeof(sockaddr_in);
     for (int i = 0; i < neighbor_count; i++) {
         // Connect to neighbor.
@@ -231,12 +331,6 @@ void myRouter::initialClientAddress(){
     client_address.sin_port = htons(CLIENT_PORT);
     bzero(client_address.sin_zero, sizeof(client_address.sin_zero));
 }   
-/**
- * Initial the address of neighbor server.
- */
-void myRouter::initialNeigborAddress() {
-    // Initial neighbor address.
-}
 
 /**
  * Create socket for receive socket.
@@ -284,3 +378,22 @@ void myRouter::bindClientSocket() {
     }
     
 }
+
+/**
+ * Print result of transport.
+ */
+void myRouter::printResult(bool has_result) {
+    for (int i = 0; i < 3; i++) {
+        printf(".");
+        fflush(stdout);
+        
+        // 1 sec = 1000 ms = 1000000 us
+        // 600000 us = 0.6 sec
+        usleep(600000);
+
+    }
+    if (has_result)
+        printf("\n%s\n", transport_result);
+    else printf("\n");
+}
+

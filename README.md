@@ -2,7 +2,7 @@
 
 > 2017-12-19
 >
-> myRouter v 2.0
+> myRouter v 2.1.0
 
 - How to install
 
@@ -36,10 +36,26 @@ You can input `quit` to quit program.
 - In this repository, i also make three example to test the program.
   - router2333
   - router2334
-  - router2335
 
-Three example program use ip of `127.0.0.1` with port `2333, 2334, 2335` to receive message, and port `23333, 23334, 23335` to send message to neighbor router.
+Three example program use ip of `127.0.0.1` with port `2333, 2334` to receive message, and port `23333, 23334` to send message to neighbor router.
 
-So you can open three terminal to input the command `./router2333` `./router2334` `./router2335` seperatly. 
+So you can open three terminal to input the command `./router2333` `./router2334`  seperatly. 
 
- 
+ </br>
+
+- TODO
+
+Implement class RouteTable in file RouteTable.h:
+
+```c++
+class RouteTable {
+private:
+  ...
+public:
+  RouteTable(char* host_ip);  // Set the ip of host router.
+  void addNeighborIP(char* neighbor_ip); // Add ip of neighbor.
+  void addRoute(char* ip1, char* ip2); // Add a route.
+  void findNextIP(char* &next_ip, char* dst_ip); // Find next ip to the destination ip.
+}
+```
+
