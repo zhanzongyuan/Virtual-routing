@@ -1,6 +1,6 @@
 //
-//  myRouter.h
-//  myRouter
+//  VirtualRouter.h
+//  VirtualRouter
 //
 //  Created by applecz on 2017/12/16.
 //  Copyright © 2017年 applecz. All rights reserved.
@@ -64,7 +64,7 @@ struct neighbor_status {
  * This the class simulate router by socket connection.
  * You need to setNeighborAddress() first, then launch router by launchRouter().
  */
-class myRouter {
+class VirtualRouter {
     
 public:
     /**
@@ -75,8 +75,8 @@ public:
      * Launch router to connect with neighbor router.
      */
     void launchRouter();
-    myRouter();
-    ~myRouter();
+    VirtualRouter();
+    ~VirtualRouter();
 private:
     const int QUEUE_SIZE = 20;
 

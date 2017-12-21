@@ -1,22 +1,22 @@
 //
-//  MyMessage.h
+//  VirtualMessage.h
 //  myRouter
 //
 //  Created by applecz on 2017/12/20.
 //  Copyright © 2017年 applecz. All rights reserved.
 //
 
-#ifndef MyMessage_h
-#define MyMessage_h
+#ifndef VirtualMessage_h
+#define VirtualMessage_h
 
-class MyMessage {
+class VirtualMessage {
 private:
     char code[4];
     char src_host[32];
     char dst_host[32];
     char msg[128];
 public:
-    MyMessage() {
+    VirtualMessage() {
         memset(code, 0, sizeof(code));
         memset(src_host, 0, sizeof(src_host));
         memset(dst_host, 0, sizeof(dst_host));
@@ -51,7 +51,7 @@ public:
     }
     
     // Decode and encode.
-    static void encode(MyMessage msg_package, char* &str_msg) {
+    static void encode(VirtualMessage msg_package, char* &str_msg) {
         // str_msg must be a NULL pointer.
         if (str_msg == NULL) {
             
@@ -59,4 +59,4 @@ public:
     }
 }
 
-#endif /* MyMessage_h */
+#endif /* VirtualMessage_h */

@@ -1,23 +1,23 @@
-#include "myRouter.h"
+#include "VirtualRouter.h"
 
-struct neighbor_status* myRouter::neighbor_list = NULL;
-queue<struct msg_package*> myRouter::sending_msg_buf = queue<struct msg_package*>();
-int myRouter::neighbor_count = 0;
-pthread_mutex_t myRouter::buf_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t myRouter::buf_cond = PTHREAD_COND_INITIALIZER;
-struct sockaddr_in myRouter::client_address = {0};
-char* myRouter::transport_result = new char[256];
+struct neighbor_status* VirtualRouter::neighbor_list = NULL;
+queue<struct msg_package*> VirtualRouter::sending_msg_buf = queue<struct msg_package*>();
+int VirtualRouter::neighbor_count = 0;
+pthread_mutex_t VirtualRouter::buf_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t VirtualRouter::buf_cond = PTHREAD_COND_INITIALIZER;
+struct sockaddr_in VirtualRouter::client_address = {0};
+char* VirtualRouter::transport_result = new char[256];
 
-myRouter::myRouter() {
+VirtualRouter::VirtualRouter() {
     neighbor_list = new neighbor_status[4];
 }
-myRouter::~myRouter() {
+VirtualRouter::~VirtualRouter() {
     delete []neighbor_list;
 }
 /**
 * Set neighbor address (ip, port) to make prepare with neighbor.
 */
-void myRouter::addNeighborRouter(const char* neighbor_ip, int neighbor_port) {
+void VirtualRouter::addNeighborRouter(const char* neighbor_ip, int neighbor_port) {
     strcpy(neighbor_list[neighbor_count].neighbor_ip, neighbor_ip);
     neighbor_list[neighbor_count].neighbor_port = neighbor_port;
     neighbor_list[neighbor_count].is_connected = false;
@@ -36,7 +36,7 @@ void myRouter::addNeighborRouter(const char* neighbor_ip, int neighbor_port) {
 /**
 * Launch router to connect with neighbor router.
 */
-void myRouter::launchRouter() {
+void VirtualRouter::launchRouter() {
     if (neighbor_list == NULL) {
         printf("Error: you need to 'setNeighborAddress(char* neighbor_ip, int neighbor_port)' first.\n");
         return;
@@ -107,7 +107,7 @@ void myRouter::launchRouter() {
 /**
  * Thread to send data in loop.
  */
-void* myRouter::sendData(void *fd) {
+void* VirtualRouter::sendData(void *fd) {
     // Send message.
     char response[256];
     while (1) {
@@ -146,7 +146,7 @@ void* myRouter::sendData(void *fd) {
 /**
  * Thread to wait for connection from neighbor.
  */
-void* myRouter::startListenPort(void *v_server_socket) {
+void* VirtualRouter::startListenPort(void *v_server_socket) {
     
     int server_socket = *(int*)v_server_socket;
     while(1) {
@@ -185,7 +185,7 @@ void* myRouter::startListenPort(void *v_server_socket) {
 /**
  * Thread to deal with message receive.
  */
-void* myRouter::receiveData(void *v_session_socket) {
+void* VirtualRouter::receiveData(void *v_session_socket) {
     char recvbuf[256];         // Receive message buffer.
     int session_socket = *((int*)v_session_socket);
     
@@ -225,7 +225,7 @@ void* myRouter::receiveData(void *v_session_socket) {
 /**
  * This function detect neighbors connectable periodically.
  */
-void *myRouter::detectNeighbor(void* fd){
+void *VirtualRouter::detectNeighbor(void* fd){
     char response[256];
     while (1) {
         //printf("\nDetecting neighbors...\n");
@@ -271,7 +271,7 @@ void *myRouter::detectNeighbor(void* fd){
 /**
  * Rebuild some socket when the connect is done.
  */
-void myRouter::rebuildNeighborSocket(int i){
+void VirtualRouter::rebuildNeighborSocket(int i){
     // Create client socket that can be use to connet and send message to server.
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
@@ -294,7 +294,7 @@ void myRouter::rebuildNeighborSocket(int i){
 /**
  * Try to connect all neighbors.
  */
-void myRouter::connectAllNeighbors(){
+void VirtualRouter::connectAllNeighbors(){
     socklen_t addrlen = sizeof(sockaddr_in);
     for (int i = 0; i < neighbor_count; i++) {
         // Connect to neighbor.
@@ -310,7 +310,7 @@ void myRouter::connectAllNeighbors(){
 /**
  * Initial the address of server.
  */
-void myRouter::initialServerAddress() {
+void VirtualRouter::initialServerAddress() {
     // Create and initial server_address.
     memset(&server_address, 0, sizeof(server_address));
     server_address.sin_family = AF_INET;
@@ -322,7 +322,7 @@ void myRouter::initialServerAddress() {
 /**
  * Initial the address of client.
  */
-void myRouter::initialClientAddress(){
+void VirtualRouter::initialClientAddress(){
      // Create and initial server_address.
     memset(&client_address, 0, sizeof(client_address));
     client_address.sin_family = AF_INET;
@@ -338,7 +338,7 @@ void myRouter::initialClientAddress(){
  * The server will use the socket to accept connection request from other client.
  * Bind the server address with server_socket
  */
-void myRouter::bindServerSocket() {
+void VirtualRouter::bindServerSocket() {
     // Create socket.
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
@@ -355,7 +355,7 @@ void myRouter::bindServerSocket() {
 /**
  * Create neighbor socket that used to request connection to neighbor.
  */
-void myRouter::bindClientSocket() {
+void VirtualRouter::bindClientSocket() {
     for (int i = 0; i < neighbor_count; i++) {
         // Create client socket that can be use to connet and send message to server.
         int client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -382,7 +382,7 @@ void myRouter::bindClientSocket() {
 /**
  * Print result of transport.
  */
-void myRouter::printResult(bool has_result) {
+void VirtualRouter::printResult(bool has_result) {
     for (int i = 0; i < 3; i++) {
         printf(".");
         fflush(stdout);
