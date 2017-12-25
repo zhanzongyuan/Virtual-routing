@@ -24,8 +24,10 @@
 #include<sys/select.h>
 #include<pthread.h>
 #include<queue>
+#include<string>
 ////////////////////////////////
 #include <iostream>
+#include "VirtualMessage.h"
 
 using namespace std;
 
@@ -38,19 +40,24 @@ using namespace std;
  *  101: Echo detect neighbor msg.
  *  200: Send msg to dst_host.
  *  300: Change route table.
+ *
+ *
+ * Command set :
+ * send
+ * route
+ * router
+ * config
+ * quit
+ * help
+ *
  */
-struct msg_package {
-    char code[4];  
-    char src_host[32];
-    char dst_host[32];
-    char msg[128];
-};
+
 
 /**
  * Manage status of neighbor server.
  */
 struct neighbor_status {
-    char neighbor_ip[32];
+    char neighbor_ip[16];
     int neighbor_port;
     struct sockaddr_in neighbor_address;  // Neigbor address used to send msg.
     int client_socket;
@@ -94,7 +101,7 @@ private:
     static struct neighbor_status* neighbor_list;
     static int neighbor_count;
 
-    static queue<struct msg_package*> sending_msg_buf;
+    static queue<VirtualMessage*> sending_msg_buf;
     static pthread_mutex_t buf_mutex;
     static pthread_cond_t buf_cond;
     static char* transport_result;
@@ -157,6 +164,14 @@ private:
      * Print result of transport.
      */
     void printResult(bool has_result);
+    
+    
+    /**
+     * Input IO manage
+     */
+    void commandIOManage();
+    bool isValidCommand(string command);
+    void executeCommand(string command);
 };
 
 

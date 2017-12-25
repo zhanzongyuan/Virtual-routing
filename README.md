@@ -2,7 +2,7 @@
 
 > 2017-12-19
 >
-> VirtualRouting v 2.1.0
+> VirtualRouting v 3.0.0
 
 - How to install
 
@@ -29,11 +29,23 @@ You will see the message you send in the terminal of neighbor routers.
 
 Notice that in this version the router can only broadcast message you input to neighbor router, it has no route table to choose send message to which router.
 
-You can input `quit` to quit program.
+Controll router by input command.
+
+```
+In this version, router add command set as follow:
+
+- 'send'  : send message to router with ip. 
+- 'router': list neighbor routers information. 
+- 'config': list router config. 
+- 'route' : list route table. 
+- 'exit'  : shutdown router and exit system. 
+- 'help'  : list avaliable commands in system. 
+
+```
 
 </br>
 
-- In this repository, i also make three example to test the program.
+- In this repository, i also make three example to test the program under folder `./examples`.
   - router2333
   - router2334
 
