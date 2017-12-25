@@ -57,7 +57,7 @@ So you can open three terminal to input the command `./router2333` `./router2334
 
 - TODO
 
-Implement class RouteTable in file RouteTable.h:
+1. Implement class RouteTable in file RouteTable.h:
 
 ```c++
 class RouteTable {
@@ -71,3 +71,5 @@ public:
 }
 ```
 
+2. Add name to each router.
+3. Add function to connect neighbor in command, when the router is still running.
