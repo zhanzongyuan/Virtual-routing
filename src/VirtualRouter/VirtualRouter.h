@@ -25,9 +25,11 @@
 #include<pthread.h>
 #include<queue>
 #include<string>
+#include<map>
 ////////////////////////////////
 #include <iostream>
 #include "VirtualMessage.h"
+//#include "../RouteTableDV/RouteTable.h"
 
 using namespace std;
 
@@ -36,19 +38,19 @@ using namespace std;
 /**
  * Message that communicate between routers with.
  * code: 
- *  100: Detect neighbor msg.
- *  101: Echo detect neighbor msg.
+ *  000: Broadcast route table in LS mode.
+ *  100: Tell neighbors status change in DV mode.
  *  200: Send msg to dst_host.
- *  300: Change route table.
- *
+ *  300: Detect message.
+ *  301: Reply ok message.
  *
  * Command set :
- * send
- * route
- * router
- * config
- * quit
- * help
+ *  send
+ *  route
+ *  router
+ *  config
+ *  exit
+ *  help
  *
  */
 
@@ -87,13 +89,13 @@ public:
 private:
     const int QUEUE_SIZE = 20;
 
-    const char* SERVER_IP = "127.0.0.1";
-    const int SERVER_PORT = 2333;
+    static const char* SERVER_IP;
+    static const int SERVER_PORT;
     struct sockaddr_in server_address;   // Local address used to receive msg.
     int server_socket;
 
-    const char* CLIENT_IP = "127.0.0.1";
-    const int CLIENT_PORT = 23333;
+    static const char* CLIENT_IP;
+    static const int CLIENT_PORT;
     static struct sockaddr_in client_address;   // Local address used to send msg.
 
 
@@ -106,6 +108,12 @@ private:
     static pthread_cond_t buf_cond;
     static char* transport_result;
     
+    static int debug_mode;
+    static string routing_algo;
+    
+    static map<string, string> broadcast_mark;
+    
+    //static RouteTableDV dv_route_table;
     
     /**
      * Thread to send data in loop.
@@ -173,6 +181,5 @@ private:
     bool isValidCommand(string command);
     void executeCommand(string command);
 };
-
 
 #endif

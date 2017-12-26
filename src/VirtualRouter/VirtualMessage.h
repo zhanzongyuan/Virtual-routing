@@ -9,7 +9,6 @@
 #ifndef VIRTUAL_MESSAGE_H
 #define VIRTUAL_MESSAGE_H
 
-const int STR_MSG_LEN = 164;
 class VirtualMessage {
 private:
     char code[4];
@@ -17,6 +16,7 @@ private:
     char dst_host[16];
     char msg[128];
 public:
+    static const int STR_MSG_LEN = 164;
     VirtualMessage() {
         // Padding.
         memset(code, 0, sizeof(code));
@@ -25,21 +25,21 @@ public:
         memset(msg, 0, sizeof(msg));
     }
     // Get method.
-    void getCode(char code[]) {
-        strncpy(code, this->code, 4);
+    const char* getCode() {
+        return code;
     }
-    void getSrc(char src[]) {
-        strncpy(src, src_host, 32);
+    const char* getSrc() {
+        return src_host;
     }
-    void getDst(char dst[]) {
-        strncpy(dst, dst_host, 32);
+    const char* getDst() {
+        return dst_host;
     }
-    void getMsg(char msg[]) {
-        strncpy(msg, this->msg, 128);
+    const char* getMsg() {
+        return msg;
     }
     char* getStr() {
         char* str = NULL;
-        encode(*this, str);
+        encode(this, str);
         return str;
     }
     
@@ -58,30 +58,29 @@ public:
     }
     
     // Encode.
-    static void encode(VirtualMessage msg_package, char* &str_msg) {
-        str_msg = new char[STR_MSG_LEN];
+    static void encode(VirtualMessage* msg_package, char str_msg[]) {
         memset(str_msg, 0, sizeof(char)*STR_MSG_LEN);
-        strncpy(str_msg, msg_package.code, 4);
-        strncpy(str_msg+4, msg_package.src_host, 16);
-        strncpy(str_msg+20, msg_package.dst_host, 16);
-        strncpy(str_msg+36, msg_package.msg, 128);
+        strncpy(str_msg, msg_package->code, 4);
+        strncpy(str_msg+4, msg_package->src_host, 16);
+        strncpy(str_msg+20, msg_package->dst_host, 16);
+        strncpy(str_msg+36, msg_package->msg, 128);
         for (int i = 0; i < STR_MSG_LEN; i++)
             if (str_msg[i] == '\0') str_msg[i] = '#';
         str_msg[STR_MSG_LEN-1] = '\0';
         
     }
     // Decode
-    static void decode(VirtualMessage &msg_package, const char str_msg[]) {
+    static void decode(VirtualMessage *msg_package, const char str_msg[]) {
         // str_msg must be a NULL pointer.
         char str_msg_copy[STR_MSG_LEN];
         strncpy(str_msg_copy, str_msg, STR_MSG_LEN);
         for (int i = 0; i < STR_MSG_LEN; i++)
             if (str_msg_copy[i] == '#') str_msg_copy[i] = '\0';
         str_msg_copy[STR_MSG_LEN-1] = '\0';
-        strncpy(msg_package.code, str_msg_copy, 4);
-        strncpy(msg_package.src_host, str_msg_copy+4, 16);
-        strncpy(msg_package.dst_host, str_msg_copy+20, 16);
-        strncpy(msg_package.msg, str_msg_copy+36, 128);
+        strncpy(msg_package->code, str_msg_copy, 4);
+        strncpy(msg_package->src_host, str_msg_copy+4, 16);
+        strncpy(msg_package->dst_host, str_msg_copy+20, 16);
+        strncpy(msg_package->msg, str_msg_copy+36, 128);
     }
     
     // Print

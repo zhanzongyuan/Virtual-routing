@@ -1,20 +1,32 @@
 #include "VirtualRouter.h"
 
+const char* VirtualRouter::SERVER_IP = "127.0.0.1";
+const int VirtualRouter::SERVER_PORT = 2333;
+
+const char* VirtualRouter::CLIENT_IP = "127.0.0.1";
+const int VirtualRouter::CLIENT_PORT = 23333;
+
 struct neighbor_status* VirtualRouter::neighbor_list = NULL;
-
 queue<VirtualMessage*> VirtualRouter::sending_msg_buf = queue<VirtualMessage*>();
-
 int VirtualRouter::neighbor_count = 0;
 
 pthread_mutex_t VirtualRouter::buf_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t VirtualRouter::buf_cond = PTHREAD_COND_INITIALIZER;
 
 struct sockaddr_in VirtualRouter::client_address = {0};
-
 char* VirtualRouter::transport_result = new char[256];
+
+int VirtualRouter::debug_mode = 0;
+string VirtualRouter::routing_algo = "DV";
+// string VirtualRouter::routing_algo = "LS";
+// string VirtualRouter::routing_algo = "CENTER";
+
+map<string, string> VirtualRouter::broadcast_mark = map<string, string>();
+
 
 VirtualRouter::VirtualRouter() {
     neighbor_list = new neighbor_status[4];
+    //broadcast_mark.insert(pair<string, string>(SERVER_IP, ""));
 }
 VirtualRouter::~VirtualRouter() {
     delete []neighbor_list;
@@ -100,6 +112,7 @@ void* VirtualRouter::sendData(void *fd) {
     char code[4];
     char next_neighbor_ip[16];
     int next_neighbor_index;
+    char encode_message[VirtualMessage::STR_MSG_LEN];
     while (1) {
         pthread_mutex_lock(&buf_mutex);
         pthread_cond_wait(&buf_cond, &buf_mutex);
@@ -108,13 +121,12 @@ void* VirtualRouter::sendData(void *fd) {
             sending_msg_buf.pop();
             
             // Encode message
-            char *encode_message;
-            VirtualMessage::encode(*sending_message, encode_message);
+            VirtualMessage::encode(sending_message, encode_message);
             
             // Find next neighbor.
             // TODO: route algorithm: DV, SL
-            sending_message->getCode(code);
-            sending_message->getDst(next_neighbor_ip);
+            strncpy(code, sending_message->getCode(), 4);
+            strncpy(next_neighbor_ip, sending_message->getDst(), 16);
             next_neighbor_index = -1;
             for (int i = 0; i < neighbor_count; i++)
                 if (strncmp(next_neighbor_ip, neighbor_list[i].neighbor_ip, 16) == 0) {
@@ -126,7 +138,7 @@ void* VirtualRouter::sendData(void *fd) {
             if (next_neighbor_index != -1) {
                 if (neighbor_list[next_neighbor_index].is_connected) {
                     send(neighbor_list[next_neighbor_index].client_socket,
-                         encode_message, strlen(encode_message)+1, 0);
+                         encode_message, VirtualMessage::STR_MSG_LEN, 0);
                     
                     if (recv(neighbor_list[next_neighbor_index].client_socket, response, 256, 0) <= 0) {
                         // If send data error, it infer that the neighbor host is done.
@@ -160,7 +172,6 @@ void* VirtualRouter::sendData(void *fd) {
             
             
             delete sending_message;
-            delete []encode_message;
         }
         pthread_mutex_unlock(&buf_mutex);
     }
@@ -216,30 +227,73 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
     while (1) {
         // Receive message and print it.
         if (recv(session_socket, recvbuf, 256, 0) <= 0) {
-            perror("\nClient done...\n");
-            printf("\nrouter@name# ");
-            
-            // Reflesh input to screen.
-            fflush(stdout);
+            // Client done in silence.
             break;
         }
         else {
-            // Simple message to detect neighbor.
-            if (strncmp(recvbuf, "DETECT", 4) == 0) {
-                send(session_socket, "OK", 3, 0);
+            if (strncmp(recvbuf, "300", 3) == 0) {
+                // Get message to detect neighbor.
+                send(session_socket, "301", 3, 0);
                 continue;
             }
             
-            // Decode receive message.
-            VirtualMessage v_message;
-            VirtualMessage::decode(v_message, recvbuf);
-            v_message.print();
             
-            printf("\nrouter@name# ");
+            // Decode receive message.
+            VirtualMessage *v_message = new VirtualMessage();
+            VirtualMessage::decode(v_message, recvbuf);
+            v_message->print();
+            if (strncmp(recvbuf, "000", 3) == 0) {
+                // Broadcast, check if it has been broadcasted.
+                string src(v_message->getDst());
+                string msg(v_message->getMsg());
+                
+                if (broadcast_mark.find(src) == broadcast_mark.end()) {
+                    // First get this broadcast message.
+                    broadcast_mark.insert(pair<string, string>(src, msg));
+                    // Add to message queue.
+                    pthread_mutex_lock(&buf_mutex);
+                    sending_msg_buf.push(v_message);
+                    pthread_cond_signal(&buf_cond);
+                    pthread_mutex_unlock(&buf_mutex);
+                }
+                else if (broadcast_mark.find(src)->second != msg) {
+                    // Get new broadcast message.
+                    broadcast_mark.find(src)->second = msg;
+                    // Add to message queue.
+                    pthread_mutex_lock(&buf_mutex);
+                    sending_msg_buf.push(v_message);
+                    pthread_cond_signal(&buf_cond);
+                    pthread_mutex_unlock(&buf_mutex);
+                }
+                else {
+                    // Do nothing, drop package.
+                    delete v_message;
+                }
+            }
+            else if (strncmp(recvbuf, "100", 3) == 0) {
+                // Neighbor change route table, decode msg to route.
+                
+            }
+            else if (strncmp(recvbuf, "200", 3) == 0) {
+                // If it doesn't arrives destination put it into queue
+                if (strncmp(v_message->getDst(), SERVER_IP, 16) == 0) {
+                    // Do nothing.
+                    delete v_message;
+                }
+                else {
+                    // Add to message queue.
+                    pthread_mutex_lock(&buf_mutex);
+                    sending_msg_buf.push(v_message);
+                    pthread_cond_signal(&buf_cond);
+                    pthread_mutex_unlock(&buf_mutex);
+                }
+            }
+            
             // Response request.
-            send(session_socket, "OK", 3, 0);
+            send(session_socket, "301", 4, 0);
             
             // Reflesh input to screen.
+            printf("\nrouter@name# ");
             fflush(stdout);
         }
     }
@@ -260,13 +314,17 @@ void *VirtualRouter::detectNeighbor(void* fd){
         //printf("\nDetecting neighbors...\n");
         for (int i = 0; i < neighbor_count; i++) {
             if (neighbor_list[i].is_connected) {
-                send(neighbor_list[i].client_socket, "DETECT", strlen("DETECT")+1, 0);
+                send(neighbor_list[i].client_socket, "300", 4, 0);
                 
                 if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
-                    printf("Neighbor %s done.\n", neighbor_list[i].neighbor_ip);
                     close(neighbor_list[i].client_socket);
                     rebuildNeighborSocket(i);
                     neighbor_list[i].is_connected = false;
+                    
+                    // TODO: Tell neighbors route change.
+                    
+                    
+                    printf("Neighbor %s done.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
                     // Reflesh input to screen.
                     fflush(stdout);
@@ -281,8 +339,11 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     rebuildNeighborSocket(i);
                 }
                 else {
-                    printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);
                     neighbor_list[i].is_connected = true;
+                    
+                    // TODO: Tell neighbor route change.
+                    
+                    printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
                     // Reflesh input to screen.
                     fflush(stdout);
@@ -491,7 +552,11 @@ void VirtualRouter::executeCommand(string command) {
         // Create VirtualMessage that add to queue;
         VirtualMessage *v_message;
         v_message = new VirtualMessage();
-        v_message->setCode("200");
+        if (ip == "0.0.0.0") {
+            v_message->setCode("000");
+            broadcast_mark.find(SERVER_IP)->second = msg;
+        }
+        else v_message->setCode("200");
         v_message->setSrc(SERVER_IP);
         v_message->setDst(ip.c_str());
         v_message->setMsg(msg.c_str());

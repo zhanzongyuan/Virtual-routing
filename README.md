@@ -45,9 +45,16 @@ In this version, router add command set as follow:
 
 </br>
 
-- In this repository, i also make three example to test the program under folder `./examples`.
-  - router2333
-  - router2334
+- Examples
+
+In this repository, i also make three example to test the program under folder `./examples`.
+
+
+```
+router2333
+router2334
+```
+
 
 Three example program use ip of `127.0.0.1` with port `2333, 2334` to receive message, and port `23333, 23334` to send message to neighbor router.
 
@@ -71,5 +78,7 @@ public:
 }
 ```
 
-2. Add name to each router.
-3. Add function to connect neighbor in command, when the router is still running.
+2. Add function to send neighbor its route table periodically for algorithm *Distance Vector* and *Link State*
+3. Add debug mode and *Distance Vector/Link State* mode
+4. Add name to each router.
+5. Add command to connect or disconnect new neighbor in command, when the router is still running.
