@@ -6,21 +6,12 @@
 #include <map>
 #include <queue>
 #include <string>
-#include <sys/time.h>   /* for setitimer() */
 #include <stdio.h>      /* for printf() and fprintf() */
 #include <string.h>     /* for memset() */
 #include <signal.h>     /* for signal() and SIGALRM */
 #include <errno.h>      /* for errno */
 
 using namespace std;
-
-/**
- * Manage status of neighbor server.
- */
-struct neighbor_item {
-    string neighbor_ip;
-    time_t update; // Lasted message send time
-};
 
 struct DVTableItem
 {
@@ -40,12 +31,11 @@ struct DVTableItem
 */
 class RouteTableDV {
 private:
-  string router_ip;   // Local router address.
+  string router_ip; // Local router address.
 
-  std::vector<neighbor_item> neighbor_list; //neighbors' that directly connect to this router.
-  static int neighbor_count;
+  std::vector<string> neighbor_list; //neighbors that directly connect to this router.
 
-    // DVTableItem.next_ip DVTableItem.dst_ip DVTableItem.time_cost
+  // DVTableItem.next_ip DVTableItem.dst_ip DVTableItem.time_cost
   vector<struct DVTableItem> DVTable;
 public:
   RouteTableDV(const char* host_ip);  // Set the ip of host router.

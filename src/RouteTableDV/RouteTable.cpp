@@ -1,7 +1,6 @@
 #include "RouteTable.h"
 #define INF INT32_MAX/2
 
-int neighbor_count = 0;
 // Set the ip of host router.
 RouteTableDV::RouteTableDV(const char* host_ip) {
     router_ip = host_ip;
@@ -10,10 +9,13 @@ RouteTableDV::RouteTableDV(const char* host_ip) {
 // Add ip of neighbor.(without push it into table)
 void RouteTableDV::addNeighborIP(const char* neighbor_ip) {
     string neighbor = neighbor_ip;
-    struct neighbor_item temp;
-    temp.neighbor_ip = neighbor;
-    time(&temp.update);
-    neighbor_list.push_back(temp);
+    auto itor=neighbor_list.begin();
+    for(;itor!= neighbor_list.end(); itor++) {
+        if((*itor) == neighbor) break;
+    }
+    if(itor == neighbor_list.end()) {
+        neighbor_list.push_back(neighbor);
+    }
 }
 
 // Add a route item into table.
