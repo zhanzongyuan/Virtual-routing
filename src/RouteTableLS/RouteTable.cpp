@@ -2,10 +2,6 @@
 
 #define INF INT_MAX //Infinity
 
-int dis[10001] = {0};  //Stores shortest distance
-bool vis[10001] = {0}; //Determines whether the node has been visited or not
-vector<string> vi[10001];
-
 class prioritize
 {
 public:
@@ -29,6 +25,7 @@ void RouteTable::addNeighborIP(char *neighbor_ip)
     ip_num++;
     string tmp = neighbor_ip;
     mRouter[tmp] = ip_num;
+    mNeighbor.push_back(tmp);
   }
   else
   {
@@ -57,6 +54,37 @@ void RouteTable::findNextIP(char *&next_ip, char *dst_ip)
   string temp_ip = dst_ip;
   int dst = mRouter[temp_ip];
 
+  dijkstra();
+
+  if (vi[dst].size() == 0)
+  {
+    next_ip = (char *)malloc((mhost_ip.length() + 1) * sizeof(char));
+    mhost_ip.copy(next_ip, mhost_ip.length(), 0);
+  }
+  else if (vi[dst].size() == 1)
+    next_ip = dst_ip;
+  else
+    next_ip = (char *)vi[dst][1].data();
+  return;
+}
+
+void RouteTable::printRouteTable()
+{
+  dijkstra();
+  cout << "Source is: " << mhost_ip << ". The shortest distance to every other vertex from here is: \n";
+  for (int i = 1; i < ip_num; i++) //Printing final shortest distances from source
+  {
+    cout << "Vertex: " << mNeighbor[i - 1] << " , Distance: ";
+    dis[mRouter[mNeighbor[i - 1]]] != INF ? cout << dis[mRouter[mNeighbor[i - 1]]] << "\n" : cout << "-1\n";
+    cout << "Across vertex: ";
+    for (int j = 0; j < vi[mRouter[mNeighbor[i - 1]]].size(); j++)
+      cout << vi[mRouter[mNeighbor[i - 1]]][j] << " -> ";
+    cout << mNeighbor[i - 1] << endl << endl;
+  }
+}
+
+void RouteTable::dijkstra()
+{
   for (int i = 0; i < 10001; i++)
     dis[i] = INF;                                                              //Set initial distances to Infinity
   priority_queue<pair<string, int>, vector<pair<string, int>>, prioritize> pq; //Priority queue to store vertex,weight pairs
@@ -80,14 +108,4 @@ void RouteTable::findNextIP(char *&next_ip, char *dst_ip)
         vi[mRouter[graph[cv][i].first]].push_back(curr.first);
       }
   }
-  if (vi[dst].size() == 0)
-  {
-    next_ip = (char *)malloc((mhost_ip.length() + 1) * sizeof(char));
-    mhost_ip.copy(next_ip, mhost_ip.length(), 0);
-  }
-  else if (vi[dst].size() == 1)
-    next_ip = dst_ip;
-  else
-    next_ip = (char *)vi[dst][1].data();
-  return;
 }
