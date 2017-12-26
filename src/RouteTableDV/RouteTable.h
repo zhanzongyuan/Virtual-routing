@@ -41,6 +41,6 @@ public:
   RouteTableDV(const char* host_ip);  // Set the ip of host router.
   void addNeighborIP(const char* neighbor_ip); // Add ip of neighbor.
   void addRoute(const char* ip1, const char* ip2, int time_cost); // Add a route.
-  void findNextIP(char* &next_ip, const char* dst_ip); // Find next ip to the destination ip.
+  void findNextIP(char next_ip[], const char* dst_ip); // Find next ip to the destination ip.
 };
 #endif

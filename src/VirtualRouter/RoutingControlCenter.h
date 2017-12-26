@@ -29,9 +29,11 @@
 ////////////////////////////////
 #include <iostream>
 #include "VirtualMessage.h"
-#include "../RouteTableDV/RouteTable.h"
+//#include "../RouteTableDV/RouteTable.h"
 
 using namespace std;
+
+// TODO: Include route class
 
 /**
  * Message that communicate between routers with.
@@ -111,7 +113,7 @@ private:
     
     static map<string, string> broadcast_mark;
     
-    static RouteTableDV dv_route_table;
+    //static RouteTableDV dv_route_table;
     
     /**
      * Thread to send data in loop.

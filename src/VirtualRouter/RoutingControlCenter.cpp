@@ -111,7 +111,7 @@ void* VirtualRouter::sendData(void *fd) {
     char response[256];
     char code[4];
     char next_neighbor_ip[16];
-    vector<int> next_neighbor_index;
+    int next_neighbor_index;
     char encode_message[VirtualMessage::STR_MSG_LEN];
     while (1) {
         pthread_mutex_lock(&buf_mutex);
@@ -123,61 +123,51 @@ void* VirtualRouter::sendData(void *fd) {
             // Encode message
             VirtualMessage::encode(sending_message, encode_message);
             
-            next_neighbor_index.clear();
+            // Find next neighbor.
+            // TODO: route algorithm: DV, SL
             strncpy(code, sending_message->getCode(), 4);
-            if (strncmp(code, "000", 3) != 0) {
-                // Find next neighbor.
-                dv_route_table.findNextIP(next_neighbor_ip, sending_message->getDst());
-                if (next_neighbor_ip[0] != '\0') {
-                    for (int i = 0; i < neighbor_count; i++) {
-                        if (strncmp(next_neighbor_ip, neighbor_list[i].neighbor_ip, 16) == 0) {
-                            next_neighbor_index.push_back(i);
-                            break;
-                        }
-                    }
+            strncpy(next_neighbor_ip, sending_message->getDst(), 16);
+            next_neighbor_index = -1;
+            for (int i = 0; i < neighbor_count; i++)
+                if (strncmp(next_neighbor_ip, neighbor_list[i].neighbor_ip, 16) == 0) {
+                    next_neighbor_index = i;
+                    break;
                 }
-            }
-            else {
-                // Put all index in vector.
-                for (int i = 0; i < neighbor_count; i++)
-                    next_neighbor_index.push_back(i);
-            }
             
             // Try send message.
-            if (next_neighbor_index.size() != 0) {
-                for (int i = 0; i < next_neighbor_index.size(); i++)
-                    if (neighbor_list[i].is_connected) {
-                        send(neighbor_list[i].client_socket,
-                             encode_message, VirtualMessage::STR_MSG_LEN, 0);
+            if (next_neighbor_index != -1) {
+                if (neighbor_list[next_neighbor_index].is_connected) {
+                    send(neighbor_list[next_neighbor_index].client_socket,
+                         encode_message, VirtualMessage::STR_MSG_LEN, 0);
+                    
+                    if (recv(neighbor_list[next_neighbor_index].client_socket, response, 256, 0) <= 0) {
+                        // If send data error, it infer that the neighbor host is done.
+                        rebuildNeighborSocket(next_neighbor_index);
+                        neighbor_list[next_neighbor_index].is_connected = false;
                         
-                        if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
-                            // If send data error, it infer that the neighbor host is done.
-                            rebuildNeighborSocket(i);
-                            neighbor_list[i].is_connected = false;
-                            
-                            // Sending result.
-                            strncpy(transport_result, "Error: Neighbor ", 256);
-                            size_t result_len = strlen(transport_result);
-                            strncpy(transport_result+result_len, neighbor_list[i].neighbor_ip, 256-result_len);
-                            result_len = strlen(transport_result);
-                            strncpy(transport_result+result_len, " is done", 256-result_len);
-                        }
-                        else {
-                            strncpy(transport_result, "Send message successfully to ", 256);
-                            size_t result_len = strlen(transport_result);
-                            strncpy(transport_result+result_len, neighbor_list[i].neighbor_ip, 256-result_len);
-                        }
+                        // Sending result.
+                        strncpy(transport_result, "Error: Neighbor ", 256);
+                        size_t result_len = strlen(transport_result);
+                        strncpy(transport_result+result_len, next_neighbor_ip, 256-result_len);
+                        result_len = strlen(transport_result);
+                        strncpy(transport_result+result_len, " is done", 256-result_len);
                     }
                     else {
-                        strncpy(transport_result, "Error: Connect refused from ", 256);
+                        strncpy(transport_result, "Send message successfully to ", 256);
                         size_t result_len = strlen(transport_result);
-                        strncpy(transport_result+result_len, neighbor_list[i].neighbor_ip, 256-result_len);
+                        strncpy(transport_result+result_len, next_neighbor_ip, 256-result_len);
                     }
+                }
+                else {
+                    strncpy(transport_result, "Error: Connect refused from ", 256);
+                    size_t result_len = strlen(transport_result);
+                    strncpy(transport_result+result_len, next_neighbor_ip, 256-result_len);
+                }
             }
             else {
                 strncpy(transport_result, "Error: No route to the router ", 256);
                 size_t result_len = strlen(transport_result);
-                strncpy(transport_result+result_len, sending_message->getDst(), 256-result_len);
+                strncpy(transport_result+result_len, next_neighbor_ip, 256-result_len);
             }
             
             
@@ -281,9 +271,8 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 }
             }
             else if (strncmp(recvbuf, "100", 3) == 0) {
-                // Neighbor change route table, decode msg to route and update route table.
+                // Neighbor change route table, decode msg to route.
                 
-                delete v_message;
             }
             else if (strncmp(recvbuf, "200", 3) == 0) {
                 // If it doesn't arrives destination put it into queue
@@ -332,7 +321,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     rebuildNeighborSocket(i);
                     neighbor_list[i].is_connected = false;
                     
-                    // TODO: Change route table and tell neighbors route change.
+                    // TODO: Tell neighbors route change.
                     
                     
                     printf("Neighbor %s done.\n", neighbor_list[i].neighbor_ip);
@@ -352,8 +341,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 else {
                     neighbor_list[i].is_connected = true;
                     
-                    // TODO: Change route table and tell neighbor route change.
-                    
+                    // TODO: Tell neighbor route change.
                     
                     printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
@@ -362,6 +350,8 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 }
             }
         }
+        // TODO: Tell link change.
+        
         // 1 sec = 1000 ms = 1000000 us
         // 5000000 us = 5 sec
         usleep(5000000);
