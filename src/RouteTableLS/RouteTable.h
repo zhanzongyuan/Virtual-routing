@@ -9,6 +9,7 @@
 #include <map>
 #include <queue>
 #include <string>
+#include <sstream>
 #include <string.h>
 #include <limits.h>
 
@@ -24,13 +25,20 @@ private:
     int dis[10001];  //Stores shortest distance
     bool vis[10001]; //Determines whether the node has been visited or not
     vector<string> vi[10001];
+    bool isRemove[10001];
+
     void dijkstra();
+    string encode();
+    vector<pair<string, string>> decode(string message);
+
 public:
     RouteTable(const char* host_ip);  // Set the ip of host router.
-    void addNeighborIP(char* neighbor_ip); // Add ip of neighbor.
-    void addRoute(char* ip1, char* ip2, int time); // Add a route.
+    void addNeighborIP(const char* neighbor_ip); // Add ip of neighbor.
+    void addRoute(char* router_ip, string message); // Add a route.
     void findNextIP(char* &next_ip, char* dst_ip); // Find next ip to the destination ip.
     void printRouteTable();
+    void removeRoute(char* neighbor_ip);
+    string getBroadcastMessage();
 };
 
 #endif
