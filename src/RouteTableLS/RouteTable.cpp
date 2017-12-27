@@ -1,4 +1,4 @@
-#include "RouteTableLS.h"
+#include "RouteTable.h"
 
 #define INF INT_MAX //Infinity
 
@@ -11,7 +11,7 @@ public:
   }
 };
 
-RouteTableLS::RouteTableLS(const char *host_ip)
+RouteTable::RouteTable(const char *host_ip)
 {
   ip_num = 1;
   mhost_ip = host_ip;
@@ -21,7 +21,7 @@ RouteTableLS::RouteTableLS(const char *host_ip)
     isRemove[i] = false;
 }
 
-void RouteTableLS::addNeighborIP(const char *neighbor_ip)
+void RouteTable::addNeighborIP(const char *neighbor_ip)
 {
   if (ip_num < 10001)
   {
@@ -36,7 +36,7 @@ void RouteTableLS::addNeighborIP(const char *neighbor_ip)
   }
 }
 
-void RouteTableLS::addRoute(char *router_ip, string message)
+void RouteTable::addRoute(char *router_ip, string message)
 {
   string tmp = router_ip;
   if (mRouter[tmp] == 0 || isRemove[mRouter[tmp]])
@@ -68,11 +68,11 @@ void RouteTableLS::addRoute(char *router_ip, string message)
   dijkstra();
 }
 
-void RouteTableLS::findNextIP(char *&next_ip, char *dst_ip)
+void RouteTable::findNextIP(char *&next_ip, char *dst_ip)
 {
   if (dst_ip == mhost_ip)
   {
-    next_ip = dst_ip;
+    strcpy(next_ip, dst_ip);
     return;
   }
   string temp_ip = dst_ip;
@@ -83,13 +83,13 @@ void RouteTableLS::findNextIP(char *&next_ip, char *dst_ip)
     mhost_ip.copy(next_ip, mhost_ip.length(), 0);
   }
   else if (vi[dst].size() == 1)
-    next_ip = dst_ip;
+    strcpy(next_ip, dst_ip);
   else
-    next_ip = (char *)vi[dst][1].data();
+    strcpy(next_ip, (char *)vi[dst][1].data());
   return;
 }
 
-void RouteTableLS::printRouteTableLS()
+void RouteTable::printRouteTable()
 {
   cout << "Source is: " << mhost_ip << ". The shortest distance to every other vertex from here is: \n";
   for (int i = 1; i < ip_num; i++) //Printing final shortest distances from source
@@ -111,7 +111,7 @@ void RouteTableLS::printRouteTableLS()
   }
 }
 
-void RouteTableLS::removeRoute(char *neighbor_ip)
+void RouteTable::removeRoute(char *neighbor_ip)
 {
   string tmp = neighbor_ip;
   if (mRouter[tmp] > 1 && !isRemove[mRouter[tmp]])
@@ -138,12 +138,12 @@ void RouteTableLS::removeRoute(char *neighbor_ip)
   }
 }
 
-string RouteTableLS::getBroadcastMessage()
+string RouteTable::getBroadcastMessage()
 {
   return encode();
 }
 
-void RouteTableLS::dijkstra()
+void RouteTable::dijkstra()
 {
   for (int i = 0; i < 10001; i++)
   {
@@ -175,7 +175,7 @@ void RouteTableLS::dijkstra()
   }
 }
 
-string RouteTableLS::encode()
+string RouteTable::encode()
 {
   stringstream ss;
 
@@ -191,7 +191,7 @@ string RouteTableLS::encode()
   return ss.str();
 }
 
-vector<pair<string, string>> RouteTableLS::decode(string message)
+vector<pair<string, string>> RouteTable::decode(string message)
 {
   vector<pair<string, string>> vp;
   int left = 0, right = 0;
