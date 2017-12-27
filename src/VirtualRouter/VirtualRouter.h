@@ -30,6 +30,8 @@
 #include <iostream>
 #include "../VirtualMessage/VirtualMessage.h"
 #include "../RouteTableRCC/RouteTableRCC.h"
+#include "../RouteTableDV/RouteTableDV.h"
+#include "../RouteTableLS/RouteTableLS.h"
 
 using namespace std;
 
@@ -75,6 +77,9 @@ struct neighbor_status {
 class VirtualRouter {
     
 public:
+    static const string RCC;
+    static const string DV;
+    static const string LS;
     /**
      * Set neighbor address (ip, port) to make prepare with neighbor.
      */
@@ -83,21 +88,25 @@ public:
      * Launch router to connect with neighbor router.
      */
     void launchRouter();
-    VirtualRouter();
+    VirtualRouter(const char* host_ip, 
+        const int server_port, 
+        const int client_port, 
+        string routing_algo,
+        const char* rcc_ip = "127.0.0.1", const int rcc_port = 8080);
     ~VirtualRouter();
 private:
     const int QUEUE_SIZE = 20;
     
-    static const char* RCC_IP;
-    static const int RCC_PORT;
+    static char *RCC_IP;
+    static int RCC_PORT;
 
-    static const char* SERVER_IP;
-    static const int SERVER_PORT;
+    static char *SERVER_IP;
+    static int SERVER_PORT;
     struct sockaddr_in server_address;   // Local address used to receive msg.
     int server_socket;
 
-    static const char* CLIENT_IP;
-    static const int CLIENT_PORT;
+    static char *CLIENT_IP;
+    static int CLIENT_PORT;
     static struct sockaddr_in client_address;   // Local address used to send msg.
 
 
@@ -116,6 +125,8 @@ private:
     static map<string, string> broadcast_mark;
     
     static RouteTableRCC *rcc_route_table;
+    static RouteTableDV *dv_route_table;
+    static RouteTableLS *ls_route_table;
     
     /**
      * Thread to send data in loop.

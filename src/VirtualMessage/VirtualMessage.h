@@ -14,9 +14,9 @@ private:
     char code[4];
     char src_host[16];
     char dst_host[16];
-    char msg[128];
+    char msg[256];
 public:
-    static const int STR_MSG_LEN = 164;
+    static const int STR_MSG_LEN = 292;
     VirtualMessage() {
         // Padding.
         memset(code, 0, sizeof(code));
@@ -54,7 +54,7 @@ public:
         strncpy(this->dst_host, dst, 32);
     }
     void setMsg(const char* msg) {
-        strncpy(this->msg, msg, 128);
+        strncpy(this->msg, msg, 256);
     }
     
     // Encode.
@@ -63,7 +63,7 @@ public:
         strncpy(str_msg, msg_package->code, 4);
         strncpy(str_msg+4, msg_package->src_host, 16);
         strncpy(str_msg+20, msg_package->dst_host, 16);
-        strncpy(str_msg+36, msg_package->msg, 128);
+        strncpy(str_msg+36, msg_package->msg, 256);
         for (int i = 0; i < STR_MSG_LEN; i++)
             if (str_msg[i] == '\0') str_msg[i] = '#';
         str_msg[STR_MSG_LEN-1] = '\0';
@@ -80,7 +80,7 @@ public:
         strncpy(msg_package->code, str_msg_copy, 4);
         strncpy(msg_package->src_host, str_msg_copy+4, 16);
         strncpy(msg_package->dst_host, str_msg_copy+20, 16);
-        strncpy(msg_package->msg, str_msg_copy+36, 128);
+        strncpy(msg_package->msg, str_msg_copy+36, 256);
     }
     
     // Print

@@ -81,21 +81,20 @@ public:
      * Launch router to connect with neighbor router.
      */
     void launchRouter();
-    VirtualRCC();
+    VirtualRCC(const char* host_ip, 
+        const int server_port, 
+        const int client_port);
     ~VirtualRCC();
 private:
     const int QUEUE_SIZE = 20;
-    
-    static const char* RCC_IP;
-    static const int RCC_PORT;
 
-    static const char* SERVER_IP;
-    static const int SERVER_PORT;
+    static char* SERVER_IP;
+    static int SERVER_PORT;
     struct sockaddr_in server_address;   // Local address used to receive msg.
     int server_socket;
 
-    static const char* CLIENT_IP;
-    static const int CLIENT_PORT;
+    static char* CLIENT_IP;
+    static int CLIENT_PORT;
     static struct sockaddr_in client_address;   // Local address used to send msg.
 
 

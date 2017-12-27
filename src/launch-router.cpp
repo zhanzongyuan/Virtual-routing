@@ -7,10 +7,12 @@
 //
 #include "VirtualRouter/VirtualRouter.h"
 
+
 int main(int argc, const char * argv[]) {
-    VirtualRouter router1;
-    const char *neighbor_ip = "127.0.0.1";
-    router1.addNeighborRouter(neighbor_ip, 2334);
+    //VirtualRouter router1("127.0.0.1", 2333, 23334, VirtualRouter::DV);
+    //VirtualRouter router1("127.0.0.1", 2333, 23334, VirtualRouter::LS);
+    VirtualRouter router1("127.0.0.1", 2333, 23333, VirtualRouter::RCC, "127.0.0.1", 8080);
+    router1.addNeighborRouter("127.0.0.1", 2334);
     //router1.addNeighborRouter(neighbor_ip, 2335);
     router1.launchRouter();
     return 0;

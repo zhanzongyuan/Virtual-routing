@@ -1,13 +1,10 @@
 #include "VirtualRCC.h"
 
-const char* VirtualRCC::RCC_IP = "127.0.0.1";
-const int VirtualRCC::RCC_PORT = 23333;
+char* VirtualRCC::SERVER_IP = new char[16]{"127.0.0.1"};
+int VirtualRCC::SERVER_PORT = 2333;
 
-const char* VirtualRCC::SERVER_IP = "127.0.0.1";
-const int VirtualRCC::SERVER_PORT = 2333;
-
-const char* VirtualRCC::CLIENT_IP = "127.0.0.1";
-const int VirtualRCC::CLIENT_PORT = 23333;
+char* VirtualRCC::CLIENT_IP = new char[16]{"127.0.0.1"};
+int VirtualRCC::CLIENT_PORT = 23333;
 
 struct neighbor_status* VirtualRCC::neighbor_list = NULL;
 queue<VirtualMessage*> VirtualRCC::sending_msg_buf = queue<VirtualMessage*>();
@@ -26,7 +23,15 @@ RouteTableRCC *VirtualRCC::rcc_route_table = NULL;
 map<string, string> VirtualRCC::broadcast_mark = map<string, string>();
 
 
-VirtualRCC::VirtualRCC() {
+VirtualRCC::VirtualRCC(const char* host_ip, 
+        const int server_port, 
+        const int client_port) {
+    strncpy(SERVER_IP, host_ip, 16);
+    strncpy(CLIENT_IP, host_ip, 16);
+    SERVER_PORT = server_port;
+    CLIENT_PORT = client_port;
+
+
     neighbor_list = new neighbor_status[4];
     
     // Create route table in rcc mode that routing control center.
