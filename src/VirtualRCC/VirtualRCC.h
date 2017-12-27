@@ -1,6 +1,6 @@
 //
-//  VirtualRouter.h
-//  VirtualRouter
+//  VirtualRCC.h
+//  VirtualRCC
 //
 //  Created by applecz on 2017/12/16.
 //  Copyright © 2017年 applecz. All rights reserved.
@@ -28,12 +28,10 @@
 #include<map>
 ////////////////////////////////
 #include <iostream>
-#include "VirtualMessage.h"
-//#include "../RouteTableDV/RouteTable.h"
+#include "../VirtualMessage/VirtualMessage.h"
+#include "../RouteTableRCC/RouteTableRCC.h"
 
 using namespace std;
-
-// TODO: Include route class
 
 /**
  * Message that communicate between routers with.
@@ -43,6 +41,7 @@ using namespace std;
  *  200: Send msg to dst_host.
  *  300: Detect message.
  *  301: Reply ok message.
+ *  400: Routing Control Center message to renew table.
  *
  * Command set :
  *  send
@@ -64,8 +63,6 @@ struct neighbor_status {
     struct sockaddr_in neighbor_address;  // Neigbor address used to send msg.
     int client_socket;
     bool is_connected;
-    // TODO: Record time when detect neighbor that can be used to judge if timeout.
-    
 };
 
 
@@ -73,7 +70,7 @@ struct neighbor_status {
  * This the class simulate router by socket connection.
  * You need to setNeighborAddress() first, then launch router by launchRouter().
  */
-class VirtualRouter {
+class VirtualRCC {
     
 public:
     /**
@@ -84,10 +81,13 @@ public:
      * Launch router to connect with neighbor router.
      */
     void launchRouter();
-    VirtualRouter();
-    ~VirtualRouter();
+    VirtualRCC();
+    ~VirtualRCC();
 private:
     const int QUEUE_SIZE = 20;
+    
+    static const char* RCC_IP;
+    static const int RCC_PORT;
 
     static const char* SERVER_IP;
     static const int SERVER_PORT;
@@ -113,7 +113,7 @@ private:
     
     static map<string, string> broadcast_mark;
     
-    //static RouteTableDV dv_route_table;
+    static RouteTableRCC *rcc_route_table;
     
     /**
      * Thread to send data in loop.

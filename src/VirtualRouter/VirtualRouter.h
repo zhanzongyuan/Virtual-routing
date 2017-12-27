@@ -28,8 +28,8 @@
 #include<map>
 ////////////////////////////////
 #include <iostream>
-#include "VirtualMessage.h"
-#include "../RouteTableDV/RouteTable.h"
+#include "../VirtualMessage/VirtualMessage.h"
+#include "../RouteTableRCC/RouteTableRCC.h"
 
 using namespace std;
 
@@ -41,6 +41,7 @@ using namespace std;
  *  200: Send msg to dst_host.
  *  300: Detect message.
  *  301: Reply ok message.
+ *  400: Routing Control Center message to renew table.
  *
  * Command set :
  *  send
@@ -86,6 +87,9 @@ public:
     ~VirtualRouter();
 private:
     const int QUEUE_SIZE = 20;
+    
+    static const char* RCC_IP;
+    static const int RCC_PORT;
 
     static const char* SERVER_IP;
     static const int SERVER_PORT;
@@ -111,7 +115,7 @@ private:
     
     static map<string, string> broadcast_mark;
     
-    static RouteTableDV dv_route_table;
+    static RouteTableRCC *rcc_route_table;
     
     /**
      * Thread to send data in loop.

@@ -1,5 +1,8 @@
 #include "VirtualRouter.h"
 
+const char* VirtualRouter::RCC_IP = "127.0.0.1";
+const int VirtualRouter::RCC_PORT = 23333;
+
 const char* VirtualRouter::SERVER_IP = "127.0.0.1";
 const int VirtualRouter::SERVER_PORT = 2333;
 
@@ -17,19 +20,35 @@ struct sockaddr_in VirtualRouter::client_address = {0};
 char* VirtualRouter::transport_result = new char[256];
 
 int VirtualRouter::debug_mode = 0;
-string VirtualRouter::routing_algo = "DV";
+// string VirtualRouter::routing_algo = "DV";
 // string VirtualRouter::routing_algo = "LS";
-// string VirtualRouter::routing_algo = "CENTER";
+string VirtualRouter::routing_algo = "CENTER";
+
+RouteTableRCC* VirtualRouter::rcc_route_table = NULL;
 
 map<string, string> VirtualRouter::broadcast_mark = map<string, string>();
 
 
 VirtualRouter::VirtualRouter() {
     neighbor_list = new neighbor_status[4];
-    //broadcast_mark.insert(pair<string, string>(SERVER_IP, ""));
+    
+    if (routing_algo == "DV") ;
+    else if (routing_algo == "LS") ;
+    else if (routing_algo == "CENTER") {
+        // Create route table in rcc mode that peer router.
+        rcc_route_table = new RouteTableRCC(SERVER_IP, false);
+        addNeighborRouter(RCC_IP, RCC_PORT);
+
+    }
+    broadcast_mark.insert(pair<string, string>(SERVER_IP, ""));
 }
 VirtualRouter::~VirtualRouter() {
     delete []neighbor_list;
+    if (routing_algo == "DV") ;
+    else if (routing_algo == "LS") ;
+    else if (routing_algo == "CENTER") {
+        delete rcc_route_table;
+    }
 }
 /**
 * Set neighbor address (ip, port) to make prepare with neighbor.
@@ -74,6 +93,7 @@ void VirtualRouter::launchRouter() {
     }
     printf("Router launching");
     printResult(false);
+    executeCommand("config");
     
     pthread_t receiving_thread;
     if (pthread_create(&receiving_thread, NULL, startListenPort, &server_socket) != 0) {
@@ -126,8 +146,13 @@ void* VirtualRouter::sendData(void *fd) {
             next_neighbor_index.clear();
             strncpy(code, sending_message->getCode(), 4);
             if (strncmp(code, "000", 3) != 0) {
+                
                 // Find next neighbor.
-                dv_route_table.findNextIP(next_neighbor_ip, sending_message->getDst());
+                if (routing_algo == "CENTER")
+                    rcc_route_table->findNextIP(next_neighbor_ip, sending_message->getDst());
+                else if (routing_algo == "DV") ;
+                else if (routing_algo == "LS") ;
+                
                 if (next_neighbor_ip[0] != '\0') {
                     for (int i = 0; i < neighbor_count; i++) {
                         if (strncmp(next_neighbor_ip, neighbor_list[i].neighbor_ip, 16) == 0) {
@@ -257,8 +282,11 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 string src(v_message->getDst());
                 string msg(v_message->getMsg());
                 
+                // TODO: LS update graph and route table.
+                
+                
                 if (broadcast_mark.find(src) == broadcast_mark.end()) {
-                    // First get this broadcast message.
+                    // First get broadcast message.
                     broadcast_mark.insert(pair<string, string>(src, msg));
                     // Add to message queue.
                     pthread_mutex_lock(&buf_mutex);
@@ -281,7 +309,8 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 }
             }
             else if (strncmp(recvbuf, "100", 3) == 0) {
-                // Neighbor change route table, decode msg to route and update route table.
+                // mode = Distance Vector
+                // TODO: Neighbor change route table, decode msg to route and update route table.
                 
                 delete v_message;
             }
@@ -298,6 +327,11 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                     pthread_cond_signal(&buf_cond);
                     pthread_mutex_unlock(&buf_mutex);
                 }
+            }
+            else if (strncmp(recvbuf, "400", 3) == 0) {
+                // TODO: CENTER mode
+                rcc_route_table->renewRouteTable(string(v_message->getMsg()));
+                delete v_message;
             }
             
             // Response request.
@@ -333,6 +367,26 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     neighbor_list[i].is_connected = false;
                     
                     // TODO: Change route table and tell neighbors route change.
+                    if (routing_algo == "DV") ;
+                    else if (routing_algo == "LS") ;
+                    else if (routing_algo == "CENTER") {
+                        // Delete a neighbor in route table.
+                        rcc_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
+                        
+                        // Transport link state to rcc.
+                        VirtualMessage *v_message;
+                        v_message = new VirtualMessage();
+                        v_message->setCode("400");
+                        v_message->setSrc(SERVER_IP);
+                        v_message->setDst(RCC_IP);
+                        v_message->setMsg(rcc_route_table->getLinkState().c_str());
+                        
+                        // Add to message queue.
+                        pthread_mutex_lock(&buf_mutex);
+                        sending_msg_buf.push(v_message);
+                        pthread_cond_signal(&buf_cond);
+                        pthread_mutex_unlock(&buf_mutex);
+                    }
                     
                     
                     printf("Neighbor %s done.\n", neighbor_list[i].neighbor_ip);
@@ -353,6 +407,26 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     neighbor_list[i].is_connected = true;
                     
                     // TODO: Change route table and tell neighbor route change.
+                    if (routing_algo == "DV") ;
+                    else if (routing_algo == "LS") ;
+                    else if (routing_algo == "CENTER") {
+                        // Add a neighbor in route table.
+                        rcc_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
+                        
+                        // Transport link state to rcc.
+                        VirtualMessage *v_message;
+                        v_message = new VirtualMessage();
+                        v_message->setCode("400");
+                        v_message->setSrc(SERVER_IP);
+                        v_message->setDst(RCC_IP);
+                        v_message->setMsg(rcc_route_table->getLinkState().c_str());
+                        
+                        // Add to message queue.
+                        pthread_mutex_lock(&buf_mutex);
+                        sending_msg_buf.push(v_message);
+                        pthread_cond_signal(&buf_cond);
+                        pthread_mutex_unlock(&buf_mutex);
+                    }
                     
                     
                     printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);
@@ -598,12 +672,18 @@ void VirtualRouter::executeCommand(string command) {
     else if (command == "config") {
         // Show config of router.
         printf("\n");
+        printf("Virtual Router v3.1.0\n");
         printf("Server address : %s:%d\n", SERVER_IP, SERVER_PORT);
         printf("Client address : %s:%d\n\n", CLIENT_IP, CLIENT_PORT);
         
     }
     else if (command == "route") {
         // route table
+        if (routing_algo == "DV") ;
+        else if (routing_algo == "LS") ;
+        else if (routing_algo == "CENTER") {
+            rcc_route_table->print();
+        }
     }
     else {
         printf("Command '%s' dosen't exist.\n", command.c_str());

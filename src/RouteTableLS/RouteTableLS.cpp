@@ -1,4 +1,4 @@
-#include "RouteTable.h"
+#include "RouteTableLS.h"
 
 #define INF INT_MAX //Infinity
 
@@ -11,7 +11,7 @@ public:
   }
 };
 
-RouteTable::RouteTable(const char *host_ip)
+RouteTableLS::RouteTableLS(const char *host_ip)
 {
   ip_num = 1;
   mhost_ip = host_ip;
@@ -21,7 +21,7 @@ RouteTable::RouteTable(const char *host_ip)
     isRemove[i] = false;
 }
 
-void RouteTable::addNeighborIP(const char *neighbor_ip)
+void RouteTableLS::addNeighborIP(const char *neighbor_ip)
 {
   if (ip_num < 10001)
   {
@@ -36,7 +36,7 @@ void RouteTable::addNeighborIP(const char *neighbor_ip)
   }
 }
 
-void RouteTable::addRoute(char *router_ip, string message)
+void RouteTableLS::addRoute(char *router_ip, string message)
 {
   string tmp = router_ip;
   if (mRouter[tmp] == 0 || isRemove[mRouter[tmp]])
@@ -68,7 +68,7 @@ void RouteTable::addRoute(char *router_ip, string message)
   dijkstra();
 }
 
-void RouteTable::findNextIP(char *&next_ip, char *dst_ip)
+void RouteTableLS::findNextIP(char *&next_ip, char *dst_ip)
 {
   if (dst_ip == mhost_ip)
   {
@@ -89,7 +89,7 @@ void RouteTable::findNextIP(char *&next_ip, char *dst_ip)
   return;
 }
 
-void RouteTable::printRouteTable()
+void RouteTableLS::printRouteTableLS()
 {
   cout << "Source is: " << mhost_ip << ". The shortest distance to every other vertex from here is: \n";
   for (int i = 1; i < ip_num; i++) //Printing final shortest distances from source
@@ -111,7 +111,7 @@ void RouteTable::printRouteTable()
   }
 }
 
-void RouteTable::removeRoute(char *neighbor_ip)
+void RouteTableLS::removeRoute(char *neighbor_ip)
 {
   string tmp = neighbor_ip;
   if (mRouter[tmp] > 1 && !isRemove[mRouter[tmp]])
@@ -138,12 +138,12 @@ void RouteTable::removeRoute(char *neighbor_ip)
   }
 }
 
-string RouteTable::getBroadcastMessage()
+string RouteTableLS::getBroadcastMessage()
 {
   return encode();
 }
 
-void RouteTable::dijkstra()
+void RouteTableLS::dijkstra()
 {
   for (int i = 0; i < 10001; i++)
   {
@@ -175,7 +175,7 @@ void RouteTable::dijkstra()
   }
 }
 
-string RouteTable::encode()
+string RouteTableLS::encode()
 {
   stringstream ss;
 
@@ -191,7 +191,7 @@ string RouteTable::encode()
   return ss.str();
 }
 
-vector<pair<string, string>> RouteTable::decode(string message)
+vector<pair<string, string>> RouteTableLS::decode(string message)
 {
   vector<pair<string, string>> vp;
   int left = 0, right = 0;

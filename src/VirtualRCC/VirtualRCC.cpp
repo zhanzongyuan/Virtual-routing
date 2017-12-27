@@ -1,40 +1,46 @@
-#include "VirtualRouter.h"
+#include "VirtualRCC.h"
 
-const char* VirtualRouter::SERVER_IP = "127.0.0.1";
-const int VirtualRouter::SERVER_PORT = 2333;
+const char* VirtualRCC::RCC_IP = "127.0.0.1";
+const int VirtualRCC::RCC_PORT = 23333;
 
-const char* VirtualRouter::CLIENT_IP = "127.0.0.1";
-const int VirtualRouter::CLIENT_PORT = 23333;
+const char* VirtualRCC::SERVER_IP = "127.0.0.1";
+const int VirtualRCC::SERVER_PORT = 2333;
 
-struct neighbor_status* VirtualRouter::neighbor_list = NULL;
-queue<VirtualMessage*> VirtualRouter::sending_msg_buf = queue<VirtualMessage*>();
-int VirtualRouter::neighbor_count = 0;
+const char* VirtualRCC::CLIENT_IP = "127.0.0.1";
+const int VirtualRCC::CLIENT_PORT = 23333;
 
-pthread_mutex_t VirtualRouter::buf_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t VirtualRouter::buf_cond = PTHREAD_COND_INITIALIZER;
+struct neighbor_status* VirtualRCC::neighbor_list = NULL;
+queue<VirtualMessage*> VirtualRCC::sending_msg_buf = queue<VirtualMessage*>();
+int VirtualRCC::neighbor_count = 0;
 
-struct sockaddr_in VirtualRouter::client_address = {0};
-char* VirtualRouter::transport_result = new char[256];
+pthread_mutex_t VirtualRCC::buf_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t VirtualRCC::buf_cond = PTHREAD_COND_INITIALIZER;
 
-int VirtualRouter::debug_mode = 0;
-string VirtualRouter::routing_algo = "DV";
-// string VirtualRouter::routing_algo = "LS";
-// string VirtualRouter::routing_algo = "CENTER";
+struct sockaddr_in VirtualRCC::client_address = {0};
+char* VirtualRCC::transport_result = new char[256];
 
-map<string, string> VirtualRouter::broadcast_mark = map<string, string>();
+int VirtualRCC::debug_mode = 0;
+string VirtualRCC::routing_algo = "CENTER";
+RouteTableRCC *VirtualRCC::rcc_route_table = NULL;
+
+map<string, string> VirtualRCC::broadcast_mark = map<string, string>();
 
 
-VirtualRouter::VirtualRouter() {
+VirtualRCC::VirtualRCC() {
     neighbor_list = new neighbor_status[4];
-    //broadcast_mark.insert(pair<string, string>(SERVER_IP, ""));
+    
+    // Create route table in rcc mode that routing control center.
+    rcc_route_table = new RouteTableRCC(SERVER_IP, true);
+    broadcast_mark.insert(pair<string, string>(SERVER_IP, ""));
 }
-VirtualRouter::~VirtualRouter() {
+VirtualRCC::~VirtualRCC() {
     delete []neighbor_list;
+    delete rcc_route_table;
 }
 /**
 * Set neighbor address (ip, port) to make prepare with neighbor.
 */
-void VirtualRouter::addNeighborRouter(const char* neighbor_ip, int neighbor_port) {
+void VirtualRCC::addNeighborRouter(const char* neighbor_ip, int neighbor_port) {
     strcpy(neighbor_list[neighbor_count].neighbor_ip, neighbor_ip);
     neighbor_list[neighbor_count].neighbor_port = neighbor_port;
     neighbor_list[neighbor_count].is_connected = false;
@@ -53,7 +59,7 @@ void VirtualRouter::addNeighborRouter(const char* neighbor_ip, int neighbor_port
 /**
 * Launch router to connect with neighbor router.
 */
-void VirtualRouter::launchRouter() {
+void VirtualRCC::launchRouter() {
     if (neighbor_list == NULL) {
         printf("Error: you need to 'setNeighborAddress(char* neighbor_ip, int neighbor_port)' first.\n");
         return;
@@ -74,6 +80,7 @@ void VirtualRouter::launchRouter() {
     }
     printf("Router launching");
     printResult(false);
+    executeCommand("config");
     
     pthread_t receiving_thread;
     if (pthread_create(&receiving_thread, NULL, startListenPort, &server_socket) != 0) {
@@ -106,12 +113,11 @@ void VirtualRouter::launchRouter() {
 /**
  * Thread to send data in loop.
  */
-void* VirtualRouter::sendData(void *fd) {
-    // Send message.
+void* VirtualRCC::sendData(void *fd) {
+    // RCC send message to all neihgbor.
     char response[256];
     char code[4];
-    char next_neighbor_ip[16];
-    int next_neighbor_index;
+    vector<int> next_neighbor_index;
     char encode_message[VirtualMessage::STR_MSG_LEN];
     while (1) {
         pthread_mutex_lock(&buf_mutex);
@@ -123,52 +129,38 @@ void* VirtualRouter::sendData(void *fd) {
             // Encode message
             VirtualMessage::encode(sending_message, encode_message);
             
-            // Find next neighbor.
-            // TODO: route algorithm: DV, SL
+            next_neighbor_index.clear();
             strncpy(code, sending_message->getCode(), 4);
-            strncpy(next_neighbor_ip, sending_message->getDst(), 16);
-            next_neighbor_index = -1;
+            // Put all index in vector.
             for (int i = 0; i < neighbor_count; i++)
-                if (strncmp(next_neighbor_ip, neighbor_list[i].neighbor_ip, 16) == 0) {
-                    next_neighbor_index = i;
-                    break;
-                }
-            
-            // Try send message.
-            if (next_neighbor_index != -1) {
-                if (neighbor_list[next_neighbor_index].is_connected) {
-                    send(neighbor_list[next_neighbor_index].client_socket,
+                if (neighbor_list[i].is_connected) {
+                    send(neighbor_list[i].client_socket,
                          encode_message, VirtualMessage::STR_MSG_LEN, 0);
                     
-                    if (recv(neighbor_list[next_neighbor_index].client_socket, response, 256, 0) <= 0) {
+                    if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
                         // If send data error, it infer that the neighbor host is done.
-                        rebuildNeighborSocket(next_neighbor_index);
-                        neighbor_list[next_neighbor_index].is_connected = false;
+                        rebuildNeighborSocket(i);
+                        neighbor_list[i].is_connected = false;
                         
                         // Sending result.
                         strncpy(transport_result, "Error: Neighbor ", 256);
                         size_t result_len = strlen(transport_result);
-                        strncpy(transport_result+result_len, next_neighbor_ip, 256-result_len);
+                        strncpy(transport_result+result_len, neighbor_list[i].neighbor_ip, 256-result_len);
                         result_len = strlen(transport_result);
                         strncpy(transport_result+result_len, " is done", 256-result_len);
                     }
                     else {
                         strncpy(transport_result, "Send message successfully to ", 256);
                         size_t result_len = strlen(transport_result);
-                        strncpy(transport_result+result_len, next_neighbor_ip, 256-result_len);
+                        strncpy(transport_result+result_len, neighbor_list[i].neighbor_ip, 256-result_len);
                     }
                 }
                 else {
                     strncpy(transport_result, "Error: Connect refused from ", 256);
                     size_t result_len = strlen(transport_result);
-                    strncpy(transport_result+result_len, next_neighbor_ip, 256-result_len);
+                    strncpy(transport_result+result_len, neighbor_list[i].neighbor_ip, 256-result_len);
                 }
-            }
-            else {
-                strncpy(transport_result, "Error: No route to the router ", 256);
-                size_t result_len = strlen(transport_result);
-                strncpy(transport_result+result_len, next_neighbor_ip, 256-result_len);
-            }
+            
             
             
             delete sending_message;
@@ -180,7 +172,7 @@ void* VirtualRouter::sendData(void *fd) {
 /**
  * Thread to wait for connection from neighbor.
  */
-void* VirtualRouter::startListenPort(void *v_server_socket) {
+void* VirtualRCC::startListenPort(void *v_server_socket) {
     
     int server_socket = *(int*)v_server_socket;
     while(1) {
@@ -220,7 +212,7 @@ void* VirtualRouter::startListenPort(void *v_server_socket) {
 /**
  * Thread to deal with message receive.
  */
-void* VirtualRouter::receiveData(void *v_session_socket) {
+void* VirtualRCC::receiveData(void *v_session_socket) {
     char recvbuf[256];         // Receive message buffer.
     int session_socket = *((int*)v_session_socket);
     
@@ -237,56 +229,28 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 continue;
             }
             
-            
             // Decode receive message.
             VirtualMessage *v_message = new VirtualMessage();
             VirtualMessage::decode(v_message, recvbuf);
             v_message->print();
-            if (strncmp(recvbuf, "000", 3) == 0) {
-                // Broadcast, check if it has been broadcasted.
-                string src(v_message->getDst());
-                string msg(v_message->getMsg());
-                
-                if (broadcast_mark.find(src) == broadcast_mark.end()) {
-                    // First get this broadcast message.
-                    broadcast_mark.insert(pair<string, string>(src, msg));
-                    // Add to message queue.
-                    pthread_mutex_lock(&buf_mutex);
-                    sending_msg_buf.push(v_message);
-                    pthread_cond_signal(&buf_cond);
-                    pthread_mutex_unlock(&buf_mutex);
+            if (strncmp(recvbuf, "400", 3) == 0) {
+                // TODO: RCC update graph and renew table, put new table into queue.
+                rcc_route_table->addLinkState(v_message->getSrc(), string(v_message->getMsg()));
+                pthread_mutex_lock(&buf_mutex);
+                for (int i = 0; i < neighbor_count; i++) {
+                    if (neighbor_list[i].is_connected) {
+                        VirtualMessage *route_message = new VirtualMessage();
+                        route_message->setCode("400");
+                        route_message->setSrc(SERVER_IP);
+                        route_message->setDst(neighbor_list[i].neighbor_ip);
+                        route_message->setMsg(rcc_route_table->getRouterTable(neighbor_list[i].neighbor_ip).c_str());
+                        sending_msg_buf.push(route_message);
+                    }
                 }
-                else if (broadcast_mark.find(src)->second != msg) {
-                    // Get new broadcast message.
-                    broadcast_mark.find(src)->second = msg;
-                    // Add to message queue.
-                    pthread_mutex_lock(&buf_mutex);
-                    sending_msg_buf.push(v_message);
-                    pthread_cond_signal(&buf_cond);
-                    pthread_mutex_unlock(&buf_mutex);
-                }
-                else {
-                    // Do nothing, drop package.
-                    delete v_message;
-                }
-            }
-            else if (strncmp(recvbuf, "100", 3) == 0) {
-                // Neighbor change route table, decode msg to route.
-                
-            }
-            else if (strncmp(recvbuf, "200", 3) == 0) {
-                // If it doesn't arrives destination put it into queue
-                if (strncmp(v_message->getDst(), SERVER_IP, 16) == 0) {
-                    // Do nothing.
-                    delete v_message;
-                }
-                else {
-                    // Add to message queue.
-                    pthread_mutex_lock(&buf_mutex);
-                    sending_msg_buf.push(v_message);
-                    pthread_cond_signal(&buf_cond);
-                    pthread_mutex_unlock(&buf_mutex);
-                }
+                pthread_cond_signal(&buf_cond);
+                pthread_mutex_unlock(&buf_mutex);
+
+                delete v_message;
             }
             
             // Response request.
@@ -308,7 +272,7 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
 /**
  * This function detect neighbors connectable periodically.
  */
-void *VirtualRouter::detectNeighbor(void* fd){
+void *VirtualRCC::detectNeighbor(void* fd){
     char response[256];
     while (1) {
         //printf("\nDetecting neighbors...\n");
@@ -320,9 +284,6 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     close(neighbor_list[i].client_socket);
                     rebuildNeighborSocket(i);
                     neighbor_list[i].is_connected = false;
-                    
-                    // TODO: Tell neighbors route change.
-                    
                     
                     printf("Neighbor %s done.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
@@ -341,8 +302,6 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 else {
                     neighbor_list[i].is_connected = true;
                     
-                    // TODO: Tell neighbor route change.
-                    
                     printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
                     // Reflesh input to screen.
@@ -350,8 +309,6 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 }
             }
         }
-        // TODO: Tell link change.
-        
         // 1 sec = 1000 ms = 1000000 us
         // 5000000 us = 5 sec
         usleep(5000000);
@@ -362,7 +319,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
 /**
  * Rebuild some socket when the connect is done.
  */
-void VirtualRouter::rebuildNeighborSocket(int i){
+void VirtualRCC::rebuildNeighborSocket(int i){
     // Create client socket that can be use to connet and send message to server.
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
@@ -385,7 +342,7 @@ void VirtualRouter::rebuildNeighborSocket(int i){
 /**
  * Try to connect all neighbors.
  */
-void VirtualRouter::connectAllNeighbors(){
+void VirtualRCC::connectAllNeighbors(){
     socklen_t addrlen = sizeof(sockaddr_in);
     for (int i = 0; i < neighbor_count; i++) {
         // Connect to neighbor.
@@ -401,7 +358,7 @@ void VirtualRouter::connectAllNeighbors(){
 /**
  * Initial the address of server.
  */
-void VirtualRouter::initialServerAddress() {
+void VirtualRCC::initialServerAddress() {
     // Create and initial server_address.
     memset(&server_address, 0, sizeof(server_address));
     server_address.sin_family = AF_INET;
@@ -413,7 +370,7 @@ void VirtualRouter::initialServerAddress() {
 /**
  * Initial the address of client.
  */
-void VirtualRouter::initialClientAddress(){
+void VirtualRCC::initialClientAddress(){
      // Create and initial server_address.
     memset(&client_address, 0, sizeof(client_address));
     client_address.sin_family = AF_INET;
@@ -429,7 +386,7 @@ void VirtualRouter::initialClientAddress(){
  * The server will use the socket to accept connection request from other client.
  * Bind the server address with server_socket
  */
-void VirtualRouter::bindServerSocket() {
+void VirtualRCC::bindServerSocket() {
     // Create socket.
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
@@ -446,7 +403,7 @@ void VirtualRouter::bindServerSocket() {
 /**
  * Create neighbor socket that used to request connection to neighbor.
  */
-void VirtualRouter::bindClientSocket() {
+void VirtualRCC::bindClientSocket() {
     for (int i = 0; i < neighbor_count; i++) {
         // Create client socket that can be use to connet and send message to server.
         int client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -473,7 +430,7 @@ void VirtualRouter::bindClientSocket() {
 /**
  * Print result of transport.
  */
-void VirtualRouter::printResult(bool has_result) {
+void VirtualRCC::printResult(bool has_result) {
     for (int i = 0; i < 3; i++) {
         printf(".");
         fflush(stdout);
@@ -492,7 +449,7 @@ void VirtualRouter::printResult(bool has_result) {
 /**
  * Input IO manage.
  */
-void VirtualRouter::commandIOManage() {
+void VirtualRCC::commandIOManage() {
     string command = "";
     
     // Send message.
@@ -510,7 +467,7 @@ void VirtualRouter::commandIOManage() {
         } while(!isValidCommand(command));
     }
 }
-bool VirtualRouter::isValidCommand(string command) {
+bool VirtualRCC::isValidCommand(string command) {
     if (command == "send"
         || command == "exit"
         || command == "route"
@@ -520,7 +477,7 @@ bool VirtualRouter::isValidCommand(string command) {
     printf("Wrong command ‘%s’, try command 'help'.\n", command.c_str());
     return false;
 }
-void VirtualRouter::executeCommand(string command) {
+void VirtualRCC::executeCommand(string command) {
     if (command == "help") {
         // Show help.
         printf("\n");
@@ -588,12 +545,18 @@ void VirtualRouter::executeCommand(string command) {
     else if (command == "config") {
         // Show config of router.
         printf("\n");
+        printf("Virtual RCC v3.1.0\n");
         printf("Server address : %s:%d\n", SERVER_IP, SERVER_PORT);
         printf("Client address : %s:%d\n\n", CLIENT_IP, CLIENT_PORT);
         
     }
     else if (command == "route") {
         // route table
+        if (routing_algo == "DV") ;
+        else if (routing_algo == "LS") ;
+        else if (routing_algo == "CENTER") {
+            rcc_route_table->print();
+        }
     }
     else {
         printf("Command '%s' dosen't exist.\n", command.c_str());
