@@ -28,6 +28,9 @@ int VirtualRouter::debug_mode = 0;
 // string VirtualRouter::routing_algo = VirtualRouter::LS;
 string VirtualRouter::routing_algo = VirtualRouter::RCC;
 
+
+RouteTableDV* VirtualRouter::dv_route_table = NULL;
+RouteTableLS* VirtualRouter::ls_route_table = NULL;
 RouteTableRCC* VirtualRouter::rcc_route_table = NULL;
 
 map<string, string> VirtualRouter::broadcast_mark = map<string, string>();
@@ -303,7 +306,7 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 string msg(v_message->getMsg());
                 
                 // TODO: LS update graph and route table.
-                
+                ls_route_table->addRoute(v_message->getSrc(), v_message->getMsg());
                 
                 if (broadcast_mark.find(src) == broadcast_mark.end()) {
                     // First get broadcast message.
@@ -387,26 +390,36 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     neighbor_list[i].is_connected = false;
                     
                     // TODO: Change route table and tell neighbors route change.
-                    if (routing_algo == VirtualRouter::DV) ;
-                    else if (routing_algo == VirtualRouter::LS) ;
-                    else if (routing_algo == VirtualRouter::RCC) {
+                    VirtualMessage *v_message;
+                    v_message = new VirtualMessage();
+                    if (routing_algo == VirtualRouter::DV);
+                    else if (routing_algo == VirtualRouter::LS) {
                         // Delete a neighbor in route table.
-                        rcc_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
+                        ls_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
                         
                         // Transport link state to rcc.
-                        VirtualMessage *v_message;
-                        v_message = new VirtualMessage();
+                        v_message->setCode("000");
+                        v_message->setSrc(SERVER_IP);
+                        v_message->setDst("0.0.0.0");
+                        v_message->setMsg(ls_route_table->getBroadcastMessage().c_str());
+                    }
+                    else if (routing_algo == VirtualRouter::RCC) {
+                        // Delete a neighbor in route table.
+                        if (strncmp(neighbor_list[i].neighbor_ip, RCC_IP, 16) != 0)
+                            rcc_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
+                        
+                        // Transport link state to rcc.
                         v_message->setCode("400");
                         v_message->setSrc(SERVER_IP);
                         v_message->setDst(RCC_IP);
                         v_message->setMsg(rcc_route_table->getLinkState().c_str());
                         
-                        // Add to message queue.
-                        pthread_mutex_lock(&buf_mutex);
-                        sending_msg_buf.push(v_message);
-                        pthread_cond_signal(&buf_cond);
-                        pthread_mutex_unlock(&buf_mutex);
                     }
+                    // Add to message queue.
+                    pthread_mutex_lock(&buf_mutex);
+                    sending_msg_buf.push(v_message);
+                    pthread_cond_signal(&buf_cond);
+                    pthread_mutex_unlock(&buf_mutex);
                     
                     
                     printf("Neighbor %s done.\n", neighbor_list[i].neighbor_ip);
@@ -427,26 +440,36 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     neighbor_list[i].is_connected = true;
                     
                     // TODO: Change route table and tell neighbor route change.
+                    // Transport link state to rcc.
+                    VirtualMessage *v_message;
+                    v_message = new VirtualMessage();
                     if (routing_algo == VirtualRouter::DV) ;
-                    else if (routing_algo == VirtualRouter::LS) ;
-                    else if (routing_algo == VirtualRouter::RCC) {
+                    else if (routing_algo == VirtualRouter::LS) {
                         // Add a neighbor in route table.
-                        rcc_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
+                        ls_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
                         
                         // Transport link state to rcc.
-                        VirtualMessage *v_message;
-                        v_message = new VirtualMessage();
+                        v_message->setCode("000");
+                        v_message->setSrc(SERVER_IP);
+                        v_message->setDst("0.0.0.0");
+                        v_message->setMsg(ls_route_table->getBroadcastMessage().c_str());
+                    }
+                    else if (routing_algo == VirtualRouter::RCC) {
+                        // Add a neighbor in route table.
+                        if (strncmp(neighbor_list[i].neighbor_ip, RCC_IP, 16) != 0)
+                            rcc_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
+                        
                         v_message->setCode("400");
                         v_message->setSrc(SERVER_IP);
                         v_message->setDst(RCC_IP);
                         v_message->setMsg(rcc_route_table->getLinkState().c_str());
                         
-                        // Add to message queue.
-                        pthread_mutex_lock(&buf_mutex);
-                        sending_msg_buf.push(v_message);
-                        pthread_cond_signal(&buf_cond);
-                        pthread_mutex_unlock(&buf_mutex);
                     }
+                    // Add to message queue.
+                    pthread_mutex_lock(&buf_mutex);
+                    sending_msg_buf.push(v_message);
+                    pthread_cond_signal(&buf_cond);
+                    pthread_mutex_unlock(&buf_mutex);
                     
                     
                     printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);

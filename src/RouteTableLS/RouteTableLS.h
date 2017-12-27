@@ -33,11 +33,11 @@ private:
 
 public:
     RouteTableLS(const char* host_ip);  // Set the ip of host router.
-    void addNeighborIP(const char* neighbor_ip); // Add ip of neighbor.
-    void addRoute(char* router_ip, string message); // Add a route.
-    void findNextIP(char* &next_ip, char* dst_ip); // Find next ip to the destination ip.
+    void addNeighbor(const char* neighbor_ip); // Add ip of neighbor.
+    void addRoute(const char* router_ip, string message); // Add a route.
+    void findNextIP(char next_ip[], const char* dst_ip); // Find next ip to the destination ip.
     void printRouteTableLS();
-    void removeRoute(char* neighbor_ip);
+    void removeNeighbor(char* neighbor_ip);
     string getBroadcastMessage();
 };
 

@@ -21,7 +21,7 @@ RouteTableLS::RouteTableLS(const char *host_ip)
     isRemove[i] = false;
 }
 
-void RouteTableLS::addNeighborIP(const char *neighbor_ip)
+void RouteTableLS::addNeighbor(const char *neighbor_ip)
 {
   if (ip_num < 10001)
   {
@@ -36,7 +36,7 @@ void RouteTableLS::addNeighborIP(const char *neighbor_ip)
   }
 }
 
-void RouteTableLS::addRoute(char *router_ip, string message)
+void RouteTableLS::addRoute(const char *router_ip, string message)
 {
   string tmp = router_ip;
   if (mRouter[tmp] == 0 || isRemove[mRouter[tmp]])
@@ -50,9 +50,9 @@ void RouteTableLS::addRoute(char *router_ip, string message)
   {
     string temp_ip1 = vp[i].first, temp_ip2 = vp[i].second;
     if (mRouter[temp_ip1] == 0 || isRemove[mRouter[temp_ip1]])
-      addNeighborIP(temp_ip1.c_str());
+      addNeighbor(temp_ip1.c_str());
     if (mRouter[temp_ip2] == 0 || isRemove[mRouter[temp_ip2]])
-      addNeighborIP(temp_ip2.c_str());
+      addNeighbor(temp_ip2.c_str());
     bool flag1 = false, flag2 = false;
     for (int j = 0; j < graph[mRouter[temp_ip1]].size(); j++)
       if (graph[mRouter[temp_ip1]][j].first == temp_ip2)
@@ -68,7 +68,7 @@ void RouteTableLS::addRoute(char *router_ip, string message)
   dijkstra();
 }
 
-void RouteTableLS::findNextIP(char *&next_ip, char *dst_ip)
+void RouteTableLS::findNextIP(char next_ip[], const char *dst_ip)
 {
   if (dst_ip == mhost_ip)
   {
@@ -111,7 +111,7 @@ void RouteTableLS::printRouteTableLS()
   }
 }
 
-void RouteTableLS::removeRoute(char *neighbor_ip)
+void RouteTableLS::removeNeighbor(char *neighbor_ip)
 {
   string tmp = neighbor_ip;
   if (mRouter[tmp] > 1 && !isRemove[mRouter[tmp]])
