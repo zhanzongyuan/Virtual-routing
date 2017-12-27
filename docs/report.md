@@ -29,9 +29,10 @@
 
 1. C++ socket套节字编程，采用建立tcp双向连接的方式，实现固定虚拟路由器发送端口和接收端口
 2. 多线程编程，引用pthread.h头文件，创建多个线程处理路由信息的接收、发送和探测等功能
-3. 最短路径算法：Dijkstra算法
-4. 距离矢量算法 Distance Vector
-5. 广播风暴控制
+3. 信号量的使用，建立互斥锁，条件锁
+4. 最短路径算法：Dijkstra算法
+5. 距离矢量算法 Distance Vector
+6. 广播风暴控制
 
 <br>
 
@@ -71,6 +72,20 @@
   - 每当接收新的广播信息，更新拓扑图，通过最短路径算法计算新路由表
 - Routing Control Center
   - 周期性向RCC发送链路状态，同时获得来自RCC计算的拓扑图。
+  - 当获取来自其他路由的链路状态时计算新路由表，发送给各个路由。
+
+<br>
+
+**命令行设计**
+
+```
+- 'send'  : send message to router with ip. 
+- 'router': list neighbor routers information. 
+- 'config': list router config. 
+- 'route' : list route table. 
+- 'exit'  : shutdown router and exit system. 
+- 'help'  : list avaliable commands in system. 
+```
 
 <br>
 
@@ -79,12 +94,14 @@
 - VirtualRouter类设计：
 
 
-- RoutingControlCenter类设计：
-- VirtualMessage类设计：
-- RouteTableDV类设计：
-- RouteTableLS类设计：
-- RouteTableRCC类设计：
+VirtualRouter内部通讯流程图
 
+![VirtualRouter设计](VirtualRouter设计.png)
+
+- 类关系图
+
+
+![类关系图](类关系图.png)
 
 <br>
 
@@ -104,12 +121,26 @@
 **部署** *（一个主机只能运行一个项目程序）*：
 
 1. 选择一个project进入到main文件夹
-2. 设置文件`main.cpp`配置邻居路由的ip和端口
-3. 设置文件`VirtualRouter.cpp`/`RoutingControlCentering.cpp`文件头中对Server和Client的ip和端口的设置。
-4. 设置文件`VirtualRouter.cpp`中`routing_algo`参数调整路由算法模式
-5. 编译安装
-   - 在终端输入`projects/router`文件夹，输入`make`编译项目
-   - 输入`./virtual-router`安装虚拟路由
+2. 设置文件`main.cpp`配置当前主机ip和接收发送端口，路由算法模式，以及邻居的ip和端口，RCC控制中心的ip和端口
+
+```c++
+//VirtualRouter router1("127.0.0.1", 2333, 23334, VirtualRouter::DV);
+//VirtualRouter router1("127.0.0.1", 2333, 23334, VirtualRouter::LS);
+//VirtualRouter([host ip], 
+//				[server port], 
+//				[client ip], 
+//				[routing algorithm], 
+//				[RCC ip], [RCC port]);
+VirtualRouter router1("127.0.0.1", 2333, 23333, VirtualRouter::RCC, "127.0.0.1", 8080);
+router1.addNeighborRouter("127.0.0.1", 2334);
+//router1.addNeighborRouter(neighbor_ip, 2335);
+router1.launchRouter();
+```
+
+3. 编译安装
+
+- 在终端输入`projects/router`文件夹，输入`make`编译项目
+- 输入`./virtual-router`安装虚拟路由
 
 </br>
 

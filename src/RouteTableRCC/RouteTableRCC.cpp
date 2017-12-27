@@ -210,9 +210,9 @@ void RouteTableRCC::print() {
     }
     else {
         printf("\n");
+        printf("          Router ip  |    Destination ip  |  Next ip  \n");
+        printf("---------------------|--------------------|--------------------\n");
         for (int i = 0; i < routers_table.size(); i++) {
-            printf("          Router ip  |    Destination ip  |  Next ip  \n");
-            printf("---------------------|--------------------|--------------------\n");
             for (int j = 0; j < routers_table[i].size(); j++) {
                if(j == 0)
                    printf("  %16s  |  %16s  |  %-16s  \n",

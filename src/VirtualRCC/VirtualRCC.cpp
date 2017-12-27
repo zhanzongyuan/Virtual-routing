@@ -557,11 +557,8 @@ void VirtualRCC::executeCommand(string command) {
     }
     else if (command == "route") {
         // route table
-        if (routing_algo == "DV") ;
-        else if (routing_algo == "LS") ;
-        else if (routing_algo == "CENTER") {
-            rcc_route_table->print();
-        }
+        rcc_route_table->print();
+        
     }
     else {
         printf("Command '%s' dosen't exist.\n", command.c_str());
