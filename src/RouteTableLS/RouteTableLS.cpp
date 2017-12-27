@@ -72,7 +72,7 @@ void RouteTableLS::findNextIP(char *&next_ip, char *dst_ip)
 {
   if (dst_ip == mhost_ip)
   {
-    next_ip = dst_ip;
+    strcpy(next_ip, dst_ip);
     return;
   }
   string temp_ip = dst_ip;
@@ -83,9 +83,9 @@ void RouteTableLS::findNextIP(char *&next_ip, char *dst_ip)
     mhost_ip.copy(next_ip, mhost_ip.length(), 0);
   }
   else if (vi[dst].size() == 1)
-    next_ip = dst_ip;
+    strcpy(next_ip, dst_ip);
   else
-    next_ip = (char *)vi[dst][1].data();
+    strcpy(next_ip, (char *)vi[dst][1].data());
   return;
 }
 
