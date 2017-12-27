@@ -208,5 +208,24 @@ void RouteTableRCC::print() {
         }
         printf("\n");
     }
+    else {
+        printf("\n");
+        for (int i = 0; i < routers_table.size(); i++) {
+            printf("          Router ip  |    Destination ip  |  Next ip  \n");
+            printf("---------------------|--------------------|--------------------\n");
+            for (int j = 0; j < routers_table[i].size(); j++) {
+               if(j == 0)
+                   printf("  %16s  |  %16s  |  %-16s  \n",
+                       routers[i].c_str(),
+                       routers_table[i][j].dst_ip.c_str(),
+                       routers_table[i][j].next_ip.c_str());
+                else
+                    printf("                    |  %16s  |  %-16s  \n",
+                           routers_table[i][j].dst_ip.c_str(),
+                           routers_table[i][j].next_ip.c_str());
+            }
+            printf("\n");
+        }
+    }
         
 }
