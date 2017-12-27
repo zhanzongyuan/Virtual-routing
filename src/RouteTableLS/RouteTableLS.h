@@ -1,8 +1,8 @@
 // Created by Song Siting
 // Link State Routing with Dijkstra algorithm
 
-#ifndef ROUTE_TABLE
-#define ROUTE_TABLE
+#ifndef ROUTE_TABLE_LS
+#define ROUTE_TABLE_LS
 
 #include <iostream>
 #include <vector>
@@ -15,7 +15,7 @@
 
 using namespace std;
 
-class RouteTable {
+class RouteTableLS {
 private:
     string mhost_ip;
     vector<string> mNeighbor;
@@ -32,11 +32,11 @@ private:
     vector<pair<string, string>> decode(string message);
 
 public:
-    RouteTable(const char* host_ip);  // Set the ip of host router.
+    RouteTableLS(const char* host_ip);  // Set the ip of host router.
     void addNeighborIP(const char* neighbor_ip); // Add ip of neighbor.
     void addRoute(char* router_ip, string message); // Add a route.
     void findNextIP(char* &next_ip, char* dst_ip); // Find next ip to the destination ip.
-    void printRouteTable();
+    void printRouteTableLS();
     void removeRoute(char* neighbor_ip);
     string getBroadcastMessage();
 };
