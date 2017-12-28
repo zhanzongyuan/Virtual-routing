@@ -11,9 +11,8 @@
 int main(int argc, const char * argv[]) {
     //VirtualRouter router1("127.0.0.1", 2333, 23334, VirtualRouter::DV);
     //VirtualRouter router1("127.0.0.1", 2333, 23334, VirtualRouter::LS);
-    VirtualRouter router1("127.0.0.1", 2333, 23333, VirtualRouter::RCC, "127.0.0.1", 8080);
-    router1.addNeighborRouter("127.0.0.1", 2334);
-    //router1.addNeighborRouter(neighbor_ip, 2335);
+    VirtualRouter router1("192.168.43.230", 2333, 23333, VirtualRouter::RCC, "192.168.43.220", 2333);
+    //srouter1.addNeighborRouter("127.0.0.1", 2334);
     router1.launchRouter();
     return 0;
 }

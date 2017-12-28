@@ -1,9 +1,9 @@
 #include "VirtualRCC.h"
 
-char* VirtualRCC::SERVER_IP = new char[16]{"127.0.0.1"};
+char* VirtualRCC::SERVER_IP = new char[16];
 int VirtualRCC::SERVER_PORT = 2333;
 
-char* VirtualRCC::CLIENT_IP = new char[16]{"127.0.0.1"};
+char* VirtualRCC::CLIENT_IP = new char[16];
 int VirtualRCC::CLIENT_PORT = 23333;
 
 struct neighbor_status* VirtualRCC::neighbor_list = NULL;
