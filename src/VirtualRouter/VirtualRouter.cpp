@@ -290,7 +290,7 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
     
     while (1) {
         // Receive message and print it.
-        if (recv(session_socket, recvbuf, 256, 0) <= 0) {
+        if (recv(session_socket, recvbuf, 512, 0) <= 0) {
             // Client done in silence.
             break;
         }
