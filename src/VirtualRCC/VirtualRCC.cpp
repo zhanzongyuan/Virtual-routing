@@ -218,7 +218,7 @@ void* VirtualRCC::startListenPort(void *v_server_socket) {
  * Thread to deal with message receive.
  */
 void* VirtualRCC::receiveData(void *v_session_socket) {
-    char recvbuf[256];         // Receive message buffer.
+    char recvbuf[512];         // Receive message buffer.
     int session_socket = *((int*)v_session_socket);
     
     while (1) {
@@ -268,8 +268,8 @@ void* VirtualRCC::receiveData(void *v_session_socket) {
     }
 
     
-    free(v_session_socket);
     close(session_socket);
+    free(v_session_socket);
     pthread_exit(NULL);
     
 }
@@ -396,12 +396,14 @@ void VirtualRCC::bindServerSocket() {
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
         perror("create socket fail");
+        throw(new exception());
     }
     // bind !!!must use ::bind , for std::bind is default.
     // Just bind socket with address.
     socklen_t addrlen = sizeof(struct sockaddr);
     if (::bind(server_socket, (struct sockaddr *)&server_address, addrlen)) {
         perror("bind fail");
+        throw(new exception());
     }
 }
 
@@ -414,17 +416,20 @@ void VirtualRCC::bindClientSocket() {
         int client_socket = socket(AF_INET, SOCK_STREAM, 0);
         if (client_socket == -1) {
             perror("create socket fail");
+            throw(new exception());
         }
         // Make socket can reuse the same port.
         int opt = 1;
         if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
             perror("setsockopt");
+            throw(new exception());
         }
         // bind !!!must use ::bind , for std::bind is default.
         // Just bind socket with address.
         socklen_t addrlen = sizeof(struct sockaddr);
         if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
             perror("bind fail");
+            throw(new exception());
         }
         
         neighbor_list[i].client_socket = client_socket;

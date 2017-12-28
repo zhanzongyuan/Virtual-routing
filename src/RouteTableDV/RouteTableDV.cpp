@@ -208,7 +208,7 @@ vector<struct DVTableItem> RouteTableDV::decode(string str_table) {
 // 获取邻居的路由变化信息, 返回自己到其他路由跳数信息，如果自己到其他路由的跳数没变，则返回“”空字符。
 //change is the DVTable of neighbor. Need to be decode
 //func add ip1=neighbor_ip, ip2=DVTable[i].des_ip, cost=DVTable[i].cost
-string RouteTableDV::routeChangeMessage(char* neighbor_ip, string change) {
+string RouteTableDV::routeChangeMessage(const char* neighbor_ip, string change) {
     vector<struct DVTableItem> table = decode(change);
     string before =  encode(DVTable);
     for(int i = 0; i < table.size(); i++) {

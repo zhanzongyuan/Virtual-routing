@@ -49,7 +49,7 @@ public:
   void print(); //show route message right now.
   void removeRoute(const char* ip1, const char* ip2); //remove one item in route table
   // 获取邻居的路由变化信息, 返回自己到其他路由跳数信息，如果自己到其他路由的跳数没变，则返回“”空字符。
-  string routeChangeMessage(char* neighbor_ip, string change); 
+  string routeChangeMessage(const char* neighbor_ip, string change);
   //连接邻居时更新路由表，同时返回自己到其他路由跳数信息
   //the same as addNeighborIP, just plus addRoute and return DVTable.
   string addNeighborIP(char* neighbor_ip, int cost); 

@@ -167,7 +167,7 @@ void* VirtualRouter::sendData(void *fd) {
             next_neighbor_index.clear();
             strncpy(code, sending_message->getCode(), 4);
 
-            if (strncmp(code, "000", 3) != 0) {
+            if (strncmp(sending_message->getDst(), "0.0.0.0", 16) != 0) {
                 
                 // Find next neighbor.
                 if (routing_algo == VirtualRouter::RCC) {
@@ -285,7 +285,7 @@ void* VirtualRouter::startListenPort(void *v_server_socket) {
  * Thread to deal with message receive.
  */
 void* VirtualRouter::receiveData(void *v_session_socket) {
-    char recvbuf[256];         // Receive message buffer.
+    char recvbuf[512];         // Receive message buffer.
     int session_socket = *((int*)v_session_socket);
     
     while (1) {
@@ -340,8 +340,22 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
             else if (strncmp(recvbuf, "100", 3) == 0) {
                 // mode = Distance Vector
                 // TODO: Neighbor change route table, decode msg to route and update route table.
+                string route_change = dv_route_table->routeChangeMessage(v_message->getSrc(),
+                                                                         string(v_message->getMsg()));
                 
-                delete v_message;
+                if (route_change.size() != 0) {
+                    // If route change tell neighbor.
+                    v_message->setCode("100");
+                    v_message->setSrc(SERVER_IP);
+                    v_message->setMsg(route_change.c_str());
+                    // Add to message queue.
+                    pthread_mutex_lock(&buf_mutex);
+                    sending_msg_buf.push(v_message);
+                    pthread_cond_signal(&buf_cond);
+                    pthread_mutex_unlock(&buf_mutex);
+                }
+                else delete v_message;
+                // BUG
             }
             else if (strncmp(recvbuf, "200", 3) == 0) {
                 // If it doesn't arrives destination put it into queue
@@ -372,9 +386,8 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
         }
     }
 
-    
-    free(v_session_socket);
     close(session_socket);
+    free(v_session_socket);
     pthread_exit(NULL);
     
 }
@@ -398,8 +411,8 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     // TODO: Change route table and tell neighbors route change.
                     VirtualMessage *v_message;
                     v_message = new VirtualMessage();
-                    if (routing_algo == VirtualRouter::DV);
-                    else if (routing_algo == VirtualRouter::LS) {
+
+                    if (routing_algo == VirtualRouter::LS) {
                         // Delete a neighbor in route table.
                         ls_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
                         
@@ -449,7 +462,17 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     // Transport link state to rcc.
                     VirtualMessage *v_message;
                     v_message = new VirtualMessage();
-                    if (routing_algo == VirtualRouter::DV) ;
+                    if (routing_algo == VirtualRouter::DV) {
+                        // Add a neighbor in route table.
+                        string route_change = dv_route_table->addNeighborIP(neighbor_list[i].neighbor_ip, 1);
+                        
+                        // Transport link state to rcc.
+                        v_message->setCode("100");
+                        v_message->setSrc(SERVER_IP);
+                        v_message->setDst("0.0.0.0");
+                        v_message->setMsg(route_change.c_str());
+
+                    }
                     else if (routing_algo == VirtualRouter::LS) {
                         // Add a neighbor in route table.
                         ls_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
@@ -566,12 +589,14 @@ void VirtualRouter::bindServerSocket() {
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
         perror("create socket fail");
+        throw(new exception());
     }
     // bind !!!must use ::bind , for std::bind is default.
     // Just bind socket with address.
     socklen_t addrlen = sizeof(struct sockaddr);
     if (::bind(server_socket, (struct sockaddr *)&server_address, addrlen)) {
         perror("bind fail");
+        throw(new exception());
     }
 }
 
@@ -584,17 +609,20 @@ void VirtualRouter::bindClientSocket() {
         int client_socket = socket(AF_INET, SOCK_STREAM, 0);
         if (client_socket == -1) {
             perror("create socket fail");
+            throw(new exception());
         }
         // Make socket can reuse the same port.
         int opt = 1;
         if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
             perror("setsockopt");
+            throw(new exception());
         }
         // bind !!!must use ::bind , for std::bind is default.
         // Just bind socket with address.
         socklen_t addrlen = sizeof(struct sockaddr);
         if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
             perror("bind fail");
+            throw(new exception());
         }
         
         neighbor_list[i].client_socket = client_socket;
@@ -727,8 +755,12 @@ void VirtualRouter::executeCommand(string command) {
     }
     else if (command == "route") {
         // route table
-        if (routing_algo == VirtualRouter::DV) ;
-        else if (routing_algo == VirtualRouter::LS) ;
+        if (routing_algo == VirtualRouter::DV) {
+            dv_route_table->print();
+        }
+        else if (routing_algo == VirtualRouter::LS) {
+            ls_route_table->printRouteTableLS();
+        }
         else if (routing_algo == VirtualRouter::RCC) {
             rcc_route_table->print();
         }
