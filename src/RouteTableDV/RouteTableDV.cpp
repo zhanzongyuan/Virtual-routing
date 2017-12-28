@@ -101,7 +101,7 @@ void RouteTableDV::addRoute(const char* ip1, const char* ip2, int cost) {
 // Find next ip to the destination ip.
 // next_ip = host_ip while destionation is router's neighbor.
 // next_ip = "" while there is no way to go.
-void RouteTableDV::findNextIP(char* &next_ip, const char* dst_ip) {
+void RouteTableDV::findNextIP(char next_ip[], const char* dst_ip) {
     string sdst_ip = dst_ip;
     for (int i = 0; i < DVTable.size(); ++i)
     {
