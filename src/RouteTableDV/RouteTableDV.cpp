@@ -126,13 +126,20 @@ void RouteTableDV::findNextIP(char next_ip[], const char* dst_ip) {
 
 //show route message right now.
 void RouteTableDV::print() {
+    Table = DVTable;
     int count = DVTable.size();
+    for (int i = 0; i < count; i++) {
+        if(Table[i].dst_ip == router_ip)
+            Table[i].dst_ip = Table[i].next_ip;
+        else if(Table[i].next_ip == router_ip)
+            Table[i].next_ip = Table[i].dst_ip;
+    }
     printf("\n");
     printf("  Next  Address  |  Goal  Address  | Cost\n");
     printf("-----------------|-----------------|-----\n");
     for (int i = 0; i < count; i++) {
-        printf("%17s|%17s|%5d\n", DVTable[i].next_ip.c_str(),
-         DVTable[i].dst_ip.c_str(), DVTable[i].cost);
+        printf("%17s|%17s|%5d\n", Table[i].next_ip.c_str(),
+         Table[i].dst_ip.c_str(), Table[i].cost);
     }
     printf("\n");
 }

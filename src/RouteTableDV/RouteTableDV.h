@@ -36,6 +36,8 @@ private:
   std::vector<string> neighbor_list; //neighbors that directly connect to this router.
   // DVTableItem.next_ip DVTableItem.dst_ip DVTableItem.cost
   vector<struct DVTableItem> DVTable;
+  //same as DVTalbe, just the next_ip has some change;
+  vector<struct DVTableItem> Table;
   // Encode.
   string encode(vector<struct DVTableItem> DVTable);
   // Decode.
