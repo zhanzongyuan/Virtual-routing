@@ -23,17 +23,11 @@ RouteTableLS::RouteTableLS(const char *host_ip)
 
 void RouteTableLS::addNeighbor(const char *neighbor_ip)
 {
-  if (ip_num < 10001)
-  {
-    ip_num++;
-    string tmp = neighbor_ip;
-    mRouter[tmp] = ip_num;
-    mNeighbor.push_back(tmp);
-  }
-  else
-  {
-    cout << "Add neighbor IP failed, exceed max IP number!" << endl;
-  }
+  string tmp = neighbor_ip;
+  addNeighborWithoutRoute(tmp);
+  graph[mRouter[tmp]].push_back(make_pair(mhost_ip, 1));
+  graph[mRouter[mhost_ip]].push_back(make_pair(tmp, 1));
+  dijkstra();
 }
 
 void RouteTableLS::addRoute(const char *router_ip, string message)
@@ -50,9 +44,9 @@ void RouteTableLS::addRoute(const char *router_ip, string message)
   {
     string temp_ip1 = vp[i].first, temp_ip2 = vp[i].second;
     if (mRouter[temp_ip1] == 0 || isRemove[mRouter[temp_ip1]])
-      addNeighbor(temp_ip1.c_str());
+      addNeighborWithoutRoute(temp_ip1);
     if (mRouter[temp_ip2] == 0 || isRemove[mRouter[temp_ip2]])
-      addNeighbor(temp_ip2.c_str());
+      addNeighborWithoutRoute(temp_ip2);
     bool flag1 = false, flag2 = false;
     for (int j = 0; j < graph[mRouter[temp_ip1]].size(); j++)
       if (graph[mRouter[temp_ip1]][j].first == temp_ip2)
@@ -91,24 +85,29 @@ void RouteTableLS::findNextIP(char next_ip[], const char *dst_ip)
 
 void RouteTableLS::printRouteTableLS()
 {
-  cout << "Source is: " << mhost_ip << ". The shortest distance to every other vertex from here is: \n";
+  printf("\n");
+  printf("  Next  Address  |  Goal  Address  | Cost\n");
+  printf("-----------------|-----------------|-----\n");
   for (int i = 1; i < ip_num; i++) //Printing final shortest distances from source
   {
+    string nxtAdd, glAdd;
+    int cost;
     if (isRemove[mRouter[mNeighbor[i]]] || mRouter[mNeighbor[i]] != i + 1)
       continue;
-    cout << "Vertex: " << mNeighbor[i] << " , Distance: ";
+    glAdd = mNeighbor[i];
     if (dis[mRouter[mNeighbor[i]]] != INF)
     {
-      cout << dis[mRouter[mNeighbor[i]]] << endl;
-      cout << "Across vertex: ";
-      for (int j = 0; j < vi[mRouter[mNeighbor[i]]].size(); j++)
-        cout << vi[mRouter[mNeighbor[i]]][j] << " -> ";
-      cout << mNeighbor[i] << endl;
+      cost = dis[mRouter[mNeighbor[i]]];
+      if (vi[mRouter[mNeighbor[i]]].size() > 1)
+        nxtAdd = vi[mRouter[mNeighbor[i]]][1];
+      else
+        nxtAdd = mNeighbor[i];
     }
     else
-      cout << "-1\n";
-    cout << endl;
+      cost = -1;
+    printf("%17s|%17s|%5d\n", nxtAdd.c_str(), glAdd.c_str(), cost);
   }
+  cout << endl;
 }
 
 void RouteTableLS::removeNeighbor(char *neighbor_ip)
@@ -210,4 +209,24 @@ vector<pair<string, string>> RouteTableLS::decode(string message)
       left = i + 1;
     }
   return vp;
+}
+void RouteTableLS::addNeighborWithoutRoute(string neighbor_ip)
+{
+  if (ip_num > 1000)
+  {
+    cout << "Add neighbor IP failed, exceed max IP number!" << endl;
+    return;
+  }
+  else
+  {
+    for (int i = 1; i < ip_num; i++) //Printing final shortest distances from source
+    {
+      if (mNeighbor[i] == neighbor_ip && isRemove[mRouter[mNeighbor[i]]] && mRouter[mNeighbor[i]] == i + 1)
+        return;
+    }
+  }
+
+  ip_num++;
+  mRouter[neighbor_ip] = ip_num;
+  mNeighbor.push_back(neighbor_ip);
 }

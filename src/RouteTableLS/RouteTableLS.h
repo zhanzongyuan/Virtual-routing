@@ -28,6 +28,7 @@ private:
     bool isRemove[10001];
 
     void dijkstra();
+    void addNeighborWithoutRoute(string neighbor_ip);
     string encode();
     vector<pair<string, string>> decode(string message);
 
