@@ -99,16 +99,26 @@ void RouteTableDV::addRoute(const char* ip1, const char* ip2, int cost) {
 }
 
 // Find next ip to the destination ip.
-// next_ip = host_ip while destionation is router's neighbor.
+// next_ip = dst_ip while destionation is router's neighbor.
 // next_ip = "" while there is no way to go.
 void RouteTableDV::findNextIP(char next_ip[], const char* dst_ip) {
     string sdst_ip = dst_ip;
     for (int i = 0; i < DVTable.size(); ++i)
     {
-        if(DVTable[i].dst_ip == sdst_ip && DVTable[i].cost != INF) {
-            const char* temp = DVTable[i].next_ip.c_str();
-            strcpy(next_ip, temp);
-            return;
+        //the line isn't down
+        if(DVTable[i].cost != INF) {
+            //find destination ip in table
+            if(DVTable[i].dst_ip == sdst_ip) {
+                //next ip isn't the destination itself
+                if(DVTable[i].next_ip != router_ip) {
+                    const char* temp = DVTable[i].next_ip.c_str();
+                    strcpy(next_ip, temp);
+                //next ip is the destination ip
+                } else {
+                    strcpy(next_ip, dst_ip);
+                }
+                return;
+            }
         }
     }
     strcpy(next_ip, "");
