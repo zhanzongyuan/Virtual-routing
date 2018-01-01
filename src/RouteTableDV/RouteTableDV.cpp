@@ -1,6 +1,7 @@
 #include "RouteTableDV.h"
 #define INF INT32_MAX/2
 
+
 // Set the ip of host router.
 RouteTableDV::RouteTableDV(const char* host_ip) {
     router_ip = string(host_ip);
@@ -187,6 +188,11 @@ void RouteTableDV::updateRouteTable() {
 }
 string RouteTableDV::addNeighbor(const char* neighbor_ip) {
     string nei_str = string(neighbor_ip);
+    
+    for (int i = 0; i < neighbor_list.size(); i++) {
+        if (neighbor_list[i] == nei_str) return encode();
+    }
+    
     neighbor_list.push_back(nei_str);
     cost_table.push_back(vector<int>(int(router_list.size()), INT_MAX));
 
@@ -197,9 +203,9 @@ string RouteTableDV::addNeighbor(const char* neighbor_ip) {
     cost_table[0][router_list.size()-1] = 1;
     cost_table[neighbor_list.size()-1][0] = 1;
     cost_table[neighbor_list.size()-1][router_list.size()-1] = 0;
-    
-    printf("\n");
     updateRouteTable();
+    
+    
     return encode();
 }
 void RouteTableDV::print() { //show route message right now.
