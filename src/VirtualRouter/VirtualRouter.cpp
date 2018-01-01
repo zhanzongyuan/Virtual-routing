@@ -306,13 +306,14 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
             VirtualMessage *v_message = new VirtualMessage();
             VirtualMessage::decode(v_message, recvbuf);
             v_message->print();
-            if (strncmp(recvbuf, "000", 3) == 0) {
+            if (strncmp(recvbuf, "000", 3) == 0 || strncmp(recvbuf, "111", 3) == 0) {
                 // Broadcast, check if it has been broadcasted.
                 string src(v_message->getDst());
                 string msg(v_message->getMsg());
                 
                 // TODO: LS update graph and route table.
-                ls_route_table->addRoute(v_message->getSrc(), v_message->getMsg());
+                if (strncmp(recvbuf, "000", 3) == 0)
+                    ls_route_table->addRoute(v_message->getSrc(), v_message->getMsg());
                 
                 if (broadcast_mark.find(src) == broadcast_mark.end()) {
                     // First get broadcast message.
@@ -412,15 +413,22 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     VirtualMessage *v_message;
                     v_message = new VirtualMessage();
 
+                    // Remove neighbor.
                     if (routing_algo == VirtualRouter::LS) {
                         // Delete a neighbor in route table.
                         ls_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
                         
-                        // Transport link state to rcc.
                         v_message->setCode("000");
                         v_message->setSrc(SERVER_IP);
                         v_message->setDst("0.0.0.0");
                         v_message->setMsg(ls_route_table->getBroadcastMessage().c_str());
+                    }
+                    else if (routing_algo == VirtualRouter::DV) {
+                        // Delete a neighbor in route table.
+                        v_message->setCode("100");
+                        v_message->setSrc(SERVER_IP);
+                        v_message->setDst("0.0.0.0");
+                        v_message->setMsg(dv_route_table->removeNeighbor(neighbor_list[i].neighbor_ip).c_str());
                     }
                     else if (routing_algo == VirtualRouter::RCC) {
                         // Delete a neighbor in route table.
@@ -451,7 +459,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 // Try connect.
                 int client_socket = neighbor_list[i].client_socket;
                 if (connect(client_socket, (struct sockaddr*)&neighbor_list[i].neighbor_address, sizeof(sockaddr_in)) == -1) {
-                    // perror("connect fail");
+                    //perror("connect fail");
                     neighbor_list[i].is_connected = false;
                     rebuildNeighborSocket(i);
                 }
@@ -462,18 +470,8 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     // Transport link state to rcc.
                     VirtualMessage *v_message;
                     v_message = new VirtualMessage();
-                    if (routing_algo == VirtualRouter::DV) {
-                        // Add a neighbor in route table.
-                        string route_change = dv_route_table->addNeighborIP(neighbor_list[i].neighbor_ip, 1);
-                        
-                        // Transport link state to rcc.
-                        v_message->setCode("100");
-                        v_message->setSrc(SERVER_IP);
-                        v_message->setDst("0.0.0.0");
-                        v_message->setMsg(route_change.c_str());
-
-                    }
-                    else if (routing_algo == VirtualRouter::LS) {
+                    
+                    if (routing_algo == VirtualRouter::LS) {
                         // Add a neighbor in route table.
                         ls_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
                         
@@ -509,7 +507,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
         }
         // 1 sec = 1000 ms = 1000000 us
         // 5000000 us = 5 sec
-        usleep(5000000);
+        usleep(3000000);
     }
 }
 
@@ -522,35 +520,22 @@ void VirtualRouter::rebuildNeighborSocket(int i){
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
         perror("create socket fail");
+        throw(new exception());
     }
     // Make socket can reuse the same port.
     int opt = 1;
     if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
         perror("setsockopt");
+        throw(new exception());
     }
     // bind !!!must use ::bind , for std::bind is default.
     // Just bind socket with address.
     socklen_t addrlen = sizeof(struct sockaddr);
     if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
         perror("bind fail");
+        throw(new exception());
     }
     neighbor_list[i].client_socket = client_socket;
-}
-
-/**
- * Try to connect all neighbors.
- */
-void VirtualRouter::connectAllNeighbors(){
-    socklen_t addrlen = sizeof(sockaddr_in);
-    for (int i = 0; i < neighbor_count; i++) {
-        // Connect to neighbor.
-        int client_socket = neighbor_list[i].client_socket;
-        if (connect(client_socket, (struct sockaddr*)&neighbor_list[i].neighbor_address, addrlen) == -1) {
-            perror("connect fail");
-            neighbor_list[i].is_connected = false;
-        }
-        neighbor_list[i].is_connected = true;
-    }
 }
 
 /**
@@ -713,7 +698,7 @@ void VirtualRouter::executeCommand(string command) {
         VirtualMessage *v_message;
         v_message = new VirtualMessage();
         if (ip == "0.0.0.0") {
-            v_message->setCode("000");
+            v_message->setCode("111");
             broadcast_mark.find(SERVER_IP)->second = msg;
         }
         else v_message->setCode("200");

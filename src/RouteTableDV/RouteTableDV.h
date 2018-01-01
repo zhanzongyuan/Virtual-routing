@@ -33,27 +33,33 @@ struct DVTableItem
 class RouteTableDV {
 private:
   string router_ip; // Local router address.
-  std::vector<string> neighbor_list; //neighbors that directly connect to this router.
+
+  vector<string> neighbor_list; //neighbors that directly connect to this router.
+  vector<string> router_list;  // Router in network.
+    
   // DVTableItem.next_ip DVTableItem.dst_ip DVTableItem.cost
-  vector<struct DVTableItem> DVTable;
+  vector<vector<int> > cost_table;
+    
   //same as DVTalbe, just the next_ip has some change;
-  vector<struct DVTableItem> Table;
+  vector<struct DVTableItem> route_table;
+    
   // Encode.
-  string encode(vector<struct DVTableItem> DVTable);
+  string encode();
+    
   // Decode.
-  vector<struct DVTableItem> decode(string table_msg);
+  vector<pair<string, int>> decode(string table_msg);
+    
+  // Update route table.
+  void updateRouteTable();
 
 public:
   RouteTableDV(const char* host_ip);  // Set the ip of host router.
   //void addNeighborIP(const char* neighbor_ip); // Add ip of neighbor.
-  void addRoute(const char* ip1, const char* ip2, int cost);
   void findNextIP(char next_ip[], const char* dst_ip); // Find next ip to the destination ip.
-  void print(); //show route message right now.
-  void removeRoute(const char* ip1, const char* ip2); //remove one item in route table
   // 获取邻居的路由变化信息, 返回自己到其他路由跳数信息，如果自己到其他路由的跳数没变，则返回“”空字符。
   string routeChangeMessage(const char* neighbor_ip, string change);
   //连接邻居时更新路由表，同时返回自己到其他路由跳数信息
-  //the same as addNeighborIP, just plus addRoute and return DVTable.
-  string addNeighborIP(char* neighbor_ip, int cost); 
+  string removeNeighbor(const char* neighbor_ip);
+  void print(); //show route message right now.
 };
 #endif

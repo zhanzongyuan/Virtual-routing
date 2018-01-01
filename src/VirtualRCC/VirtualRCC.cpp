@@ -300,7 +300,7 @@ void *VirtualRCC::detectNeighbor(void* fd){
                 // Try connect.
                 int client_socket = neighbor_list[i].client_socket;
                 if (connect(client_socket, (struct sockaddr*)&neighbor_list[i].neighbor_address, sizeof(sockaddr_in)) == -1) {
-                    // perror("connect fail");
+                    //perror("connect fail");
                     neighbor_list[i].is_connected = false;
                     rebuildNeighborSocket(i);
                 }
@@ -520,7 +520,7 @@ void VirtualRCC::executeCommand(string command) {
         VirtualMessage *v_message;
         v_message = new VirtualMessage();
         if (ip == "0.0.0.0") {
-            v_message->setCode("000");
+            v_message->setCode("111");
             broadcast_mark.find(SERVER_IP)->second = msg;
         }
         else v_message->setCode("200");

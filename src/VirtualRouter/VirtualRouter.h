@@ -40,6 +40,7 @@ using namespace std;
  * code: 
  *  000: Broadcast route table in LS mode.
  *  100: Tell neighbors status change in DV mode.
+ *  111: Broadcast message.
  *  200: Send msg to dst_host.
  *  300: Detect message.
  *  301: Reply ok message.
@@ -151,10 +152,6 @@ private:
      * Rebuild some socket when the connect is done.
      */
     static void rebuildNeighborSocket(int i);
-    /**
-     * Try to connect all neighbors.
-     */
-    void connectAllNeighbors();
     
     
     

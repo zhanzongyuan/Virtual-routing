@@ -35,7 +35,7 @@ VRCC_RT_H = $(V_RCCRT)/RouteTableRCC.h
 LAUNCH_ROUTER = $(SRC)/launch-router.cpp
 LAUNCH_RCC = $(SRC)/launch-rcc.cpp
 
-ROUTER_OUT = ./virtual-router2
+ROUTER_OUT = ./virtual-router
 RCC_OUT = ./virtual-rcc
 
 vpath %.o $(BUILD)
