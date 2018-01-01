@@ -105,7 +105,7 @@ void RouteTableLS::printRouteTableLS()
     }
     else
       cost = -1;
-    printf("%17s|%17s|%5d\n", nxtAdd.c_str(), glAdd.c_str(), cost);
+    printf("%17s|%17s|%5d\n", nxtAdd.c_str(), glAdd.c_str(), cost-1);
   }
   cout << endl;
 }
