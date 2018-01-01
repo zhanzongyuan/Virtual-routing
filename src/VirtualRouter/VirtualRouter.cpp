@@ -481,6 +481,13 @@ void *VirtualRouter::detectNeighbor(void* fd){
                         v_message->setDst("0.0.0.0");
                         v_message->setMsg(ls_route_table->getBroadcastMessage().c_str());
                     }
+                    else if (routing_algo == VirtualRouter::DV) {
+                        // Add a neighbor in route table.
+                        v_message->setCode("100");
+                        v_message->setSrc(SERVER_IP);
+                        v_message->setDst("0.0.0.0");
+                        v_message->setMsg(dv_route_table->addNeighbor(neighbor_list[i].neighbor_ip).c_str());
+                    }
                     else if (routing_algo == VirtualRouter::RCC) {
                         // Add a neighbor in route table.
                         if (strncmp(neighbor_list[i].neighbor_ip, RCC_IP, 16) != 0)

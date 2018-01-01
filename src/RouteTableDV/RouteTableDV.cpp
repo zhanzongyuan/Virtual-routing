@@ -104,6 +104,7 @@ string RouteTableDV::routeChangeMessage(const char* neighbor_ip, string change) 
         }
     }
     cost_table[0][router_index] = 1;
+    cost_table[nei_index][0] = 1;
     cost_table[nei_index][router_index] = 0;
     
     // Update row of neighbor ip.
@@ -130,6 +131,7 @@ string RouteTableDV::routeChangeMessage(const char* neighbor_ip, string change) 
     for (int i = 1; i < router_list.size(); i++) {
         if (cost_table[nei_index][i] != INT_MAX && 1 + cost_table[nei_index][i] < cost_table[0][i]) {
             cost_table[0][i] = 1 + cost_table[nei_index][i];
+            my_dirty = true;
         }
     }
     
@@ -183,6 +185,22 @@ void RouteTableDV::updateRouteTable() {
         route_table.push_back(item);
     }
 }
+string RouteTableDV::addNeighbor(const char* neighbor_ip) {
+    string nei_str = string(neighbor_ip);
+    neighbor_list.push_back(nei_str);
+    cost_table.push_back(vector<int>(int(router_list.size()), INT_MAX));
+
+    router_list.push_back(nei_str);
+    for (int i = 0; i < neighbor_list.size(); i++) {
+        cost_table[i].push_back(INT_MAX);
+    }
+    cost_table[0][router_list.size()-1] = 1;
+    cost_table[neighbor_list.size()-1][0] = 1;
+    cost_table[neighbor_list.size()-1][router_list.size()-1] = 0;
+    
+    updateRouteTable();
+    return encode();
+}
 void RouteTableDV::print() { //show route message right now.
     printf("\n\n");
     printf("  Next  Address  |  Goal  Address  | Cost\n");
@@ -196,3 +214,4 @@ void RouteTableDV::print() { //show route message right now.
     }
     printf("\n\n");
 }
+

@@ -11,6 +11,7 @@
 #include <string.h>     /* for memset() */
 #include <signal.h>     /* for signal() and SIGALRM */
 #include <errno.h>      /* for errno */
+#include <limits.h>
 
 using namespace std;
 
@@ -60,6 +61,7 @@ public:
   string routeChangeMessage(const char* neighbor_ip, string change);
   //连接邻居时更新路由表，同时返回自己到其他路由跳数信息
   string removeNeighbor(const char* neighbor_ip);
+  string addNeighbor(const char* neighbor_ip);
   void print(); //show route message right now.
 };
 #endif
