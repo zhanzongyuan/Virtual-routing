@@ -174,7 +174,7 @@ void RouteTableDV::updateRouteTable() {
     for (int i = 1; i < router_list.size(); i++) {
         struct DVTableItem item;
         item.dst_ip = router_list[i];
-        item.cost = -1;
+        item.cost = INT_MAX;
         for (int j = 1; j < neighbor_list.size(); j++) {
             if (item.cost > cost_table[j][i]) {
                 item.cost = cost_table[j][i];
@@ -198,6 +198,7 @@ string RouteTableDV::addNeighbor(const char* neighbor_ip) {
     cost_table[neighbor_list.size()-1][0] = 1;
     cost_table[neighbor_list.size()-1][router_list.size()-1] = 0;
     
+    printf("\n");
     updateRouteTable();
     return encode();
 }
