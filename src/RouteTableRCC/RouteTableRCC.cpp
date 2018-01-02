@@ -24,7 +24,7 @@ string RouteTableRCC::getRouterTable(const char* ip) {
             result += routers_table[index][i].dst_ip;
             result += "&";
             result += routers_table[index][i].next_ip;
-            result += "#";
+            result += "/";
         }
         return result;
     }
@@ -114,7 +114,7 @@ void RouteTableRCC::decodeLinkState(int index, string message) {
     // Make new router state to graph.
     string ip = "";
     for (int i = 0; i < message.size(); i++) {
-        if (message[i] == '#') {
+        if (message[i] == '/') {
             int index_nei = -1;
             for (int j = 0; j < routers.size(); j++) {
                 if (routers[j] == ip) {
@@ -162,7 +162,7 @@ string RouteTableRCC::getLinkState() {
     string result = "";
     for (int i = 0; i < nei_ip.size(); i++) {
         result += nei_ip[i];
-        result += "#";
+        result += "/";
     }
     return result;
 }
@@ -187,7 +187,7 @@ void RouteTableRCC::renewRouteTable(string message) {
             router_table.push_back(a_route);
             ip = "";
         }
-        else if (message[i] == '#') {
+        else if (message[i] == '/') {
             router_table[router_table.size()-1].next_ip = ip;
             ip = "";
         }
