@@ -32,13 +32,6 @@ void RouteTableLS::addNeighbor(const char *neighbor_ip)
 
 void RouteTableLS::addRoute(const char *router_ip, string message)
 {
-  string tmp = router_ip;
-  if (mRouter[tmp] == 0 || isRemove[mRouter[tmp]])
-  {
-    cout << "Add route failed, can not find tmp in route table!" << endl;
-    return;
-  }
-
   vector<pair<string, string>> vp = decode(message);
   for (int i = 0; i < vp.size(); i++)
   {
@@ -64,22 +57,21 @@ void RouteTableLS::addRoute(const char *router_ip, string message)
 
 void RouteTableLS::findNextIP(char next_ip[], const char *dst_ip)
 {
-  if (dst_ip == mhost_ip)
+  string nxtAdd, glAdd;
+  for (int i = 1; i < ip_num; i++) //Printing final shortest distances from source
   {
-    strcpy(next_ip, dst_ip);
-    return;
+    int cost;
+    if (isRemove[mRouter[mNeighbor[i]]] || mRouter[mNeighbor[i]] != i + 1)
+      continue;
+    glAdd = mNeighbor[i];
+    if (strcmp(glAdd.c_str(), dst_ip) && dis[mRouter[mNeighbor[i]]] != INF) {
+      if (vi[mRouter[mNeighbor[i]]].size() > 1)
+        nxtAdd = vi[mRouter[mNeighbor[i]]][1];
+      else
+        nxtAdd = mNeighbor[i];
+    }
   }
-  string temp_ip = dst_ip;
-  int dst = mRouter[temp_ip];
-  if (vi[dst].size() == 0)
-  {
-    next_ip = (char *)malloc((mhost_ip.length() + 1) * sizeof(char));
-    mhost_ip.copy(next_ip, mhost_ip.length(), 0);
-  }
-  else if (vi[dst].size() == 1)
-    strcpy(next_ip, dst_ip);
-  else
-    strcpy(next_ip, (char *)vi[dst][1].data());
+  strncpy(next_ip, nxtAdd.c_str(), 16);
   return;
 }
 
@@ -104,7 +96,7 @@ void RouteTableLS::printRouteTableLS()
         nxtAdd = mNeighbor[i];
     }
     else
-      cost = -1;
+      cost = 0;
     printf("%17s|%17s|%5d\n", nxtAdd.c_str(), glAdd.c_str(), cost-1);
   }
   cout << endl;
