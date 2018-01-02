@@ -486,7 +486,9 @@ void *VirtualRouter::detectNeighbor(void* fd){
                         v_message->setCode("100");
                         v_message->setSrc(SERVER_IP);
                         v_message->setDst("0.0.0.0");
-                        v_message->setMsg(dv_route_table->addNeighbor(neighbor_list[i].neighbor_ip).c_str());
+                        string _msg = dv_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
+                        v_message->setMsg(_msg.c_str());
+
                     }
                     else if (routing_algo == VirtualRouter::RCC) {
                         // Add a neighbor in route table.

@@ -19,9 +19,9 @@ string RouteTableDV::encode() {
     string result = "";
     for (int i = 1; i < cost_table[0].size(); i++) {
         result += router_list[i];
-        result += "#";
+        result += "/";
         result += to_string(cost_table[0][i]);
-        result += "#";
+        result += "/";
     }
     return result;
 }
@@ -31,12 +31,12 @@ vector<pair<string, int>> RouteTableDV::decode(string table_msg){
     string ip = "";
     string cost = "";
     for (int i = 0; i < table_msg.size(); i++) {
-        if (table_msg[i] != '#') {
+        if (table_msg[i] != '/') {
             ip += table_msg[i];
         }
         else {
             i++;
-            while(table_msg[i] != '#') {
+            while(table_msg[i] != '/') {
                 cost += table_msg[i];
                 i++;
             }
