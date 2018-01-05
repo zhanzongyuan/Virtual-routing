@@ -141,7 +141,7 @@ string RouteTableDV::routeChangeMessage(const char* neighbor_ip, string change) 
     else return "";
 }
 
-string RouteTableDV::removeNeighbor(const char* neighbor_ip) {
+bool RouteTableDV::removeNeighbor(const char* neighbor_ip) {
     int nei_index = -1;
     for (int i = 0; i < neighbor_list.size(); i++) {
         if (strncmp(neighbor_list[i].c_str(), neighbor_ip, 16) == 0) {
@@ -167,8 +167,8 @@ string RouteTableDV::removeNeighbor(const char* neighbor_ip) {
             break;
         }
     }
-    if (nei_index == -1) return "";
-    else return encode();
+    if (nei_index == -1) return false;
+    else return true;
 }
 void RouteTableDV::updateRouteTable() {
     route_table.clear();
@@ -186,11 +186,11 @@ void RouteTableDV::updateRouteTable() {
         route_table.push_back(item);
     }
 }
-string RouteTableDV::addNeighbor(const char* neighbor_ip) {
+bool RouteTableDV::addNeighbor(const char* neighbor_ip) {
     string nei_str = string(neighbor_ip);
     
     for (int i = 0; i < neighbor_list.size(); i++) {
-        if (neighbor_list[i] == nei_str) return encode();
+        if (neighbor_list[i] == nei_str) return false;
     }
     
     neighbor_list.push_back(nei_str);
@@ -205,8 +205,7 @@ string RouteTableDV::addNeighbor(const char* neighbor_ip) {
     cost_table[neighbor_list.size()-1][router_list.size()-1] = 0;
     updateRouteTable();
     
-    
-    return encode();
+    return true;
 }
 void RouteTableDV::print() { //show route message right now.
     printf("\n\n");
@@ -220,5 +219,9 @@ void RouteTableDV::print() { //show route message right now.
                route_table[i].cost);
     }
     printf("\n\n");
+}
+
+string RouteTableDV::linkState() {
+    return encode();
 }
 

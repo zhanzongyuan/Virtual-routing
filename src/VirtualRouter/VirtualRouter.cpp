@@ -416,6 +416,8 @@ void *VirtualRouter::detectNeighbor(void* fd){
     char response[256];
     while (1) {
         //printf("\nDetecting neighbors...\n");
+        bool link_change = false;
+        
         for (int i = 0; i < neighbor_count; i++) {
             if (neighbor_list[i].is_connected) {
                 send(neighbor_list[i].client_socket, "300", 4, 0);
@@ -425,45 +427,23 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     rebuildNeighborSocket(i);
                     neighbor_list[i].is_connected = false;
                     
-                    // TODO: Change route table and tell neighbors route change.
-                    VirtualMessage *v_message;
-                    v_message = new VirtualMessage();
-
                     // Remove neighbor.
                     if (routing_algo == VirtualRouter::LS) {
                         // Delete a neighbor in route table.
                         ls_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
-                        
-                        v_message->setCode("000");
-                        v_message->setSrc(SERVER_IP);
-                        v_message->setDst("0.0.0.0");
-                        v_message->setMsg(ls_route_table->getBroadcastMessage().c_str());
+                        link_change = true;
                     }
                     else if (routing_algo == VirtualRouter::DV) {
                         // Delete a neighbor in route table.
-                        v_message->setCode("100");
-                        v_message->setSrc(SERVER_IP);
-                        v_message->setDst("0.0.0.0");
-                        v_message->setMsg(dv_route_table->removeNeighbor(neighbor_list[i].neighbor_ip).c_str());
+                        if (dv_route_table->removeNeighbor(neighbor_list[i].neighbor_ip))
+                            link_change = true;
                     }
                     else if (routing_algo == VirtualRouter::RCC) {
                         // Delete a neighbor in route table.
                         if (strncmp(neighbor_list[i].neighbor_ip, RCC_IP, 16) != 0)
                             rcc_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
-                        
-                        // Transport link state to rcc.
-                        v_message->setCode("400");
-                        v_message->setSrc(SERVER_IP);
-                        v_message->setDst(RCC_IP);
-                        v_message->setMsg(rcc_route_table->getLinkState().c_str());
-                        
+                        link_change = true;
                     }
-                    // Add to message queue.
-                    pthread_mutex_lock(&buf_mutex);
-                    sending_msg_buf.push(v_message);
-                    pthread_cond_signal(&buf_cond);
-                    pthread_mutex_unlock(&buf_mutex);
-                    
                     
                     printf("Neighbor %s done.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
@@ -482,46 +462,23 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 else {
                     neighbor_list[i].is_connected = true;
                     
-                    // TODO: Change route table and tell neighbor route change.
                     // Transport link state to rcc.
-                    VirtualMessage *v_message;
-                    v_message = new VirtualMessage();
-                    
                     if (routing_algo == VirtualRouter::LS) {
                         // Add a neighbor in route table.
                         ls_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
-                        
-                        // Transport link state to rcc.
-                        v_message->setCode("000");
-                        v_message->setSrc(SERVER_IP);
-                        v_message->setDst("0.0.0.0");
-                        v_message->setMsg(ls_route_table->getBroadcastMessage().c_str());
+                        link_change = true;
                     }
                     else if (routing_algo == VirtualRouter::DV) {
                         // Add a neighbor in route table.
-                        v_message->setCode("100");
-                        v_message->setSrc(SERVER_IP);
-                        v_message->setDst("0.0.0.0");
-                        string _msg = dv_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
-                        v_message->setMsg(_msg.c_str());
-
+                        if (dv_route_table->addNeighbor(neighbor_list[i].neighbor_ip))
+                            link_change = true;
                     }
                     else if (routing_algo == VirtualRouter::RCC) {
                         // Add a neighbor in route table.
                         if (strncmp(neighbor_list[i].neighbor_ip, RCC_IP, 16) != 0)
                             rcc_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
-                        
-                        v_message->setCode("400");
-                        v_message->setSrc(SERVER_IP);
-                        v_message->setDst(RCC_IP);
-                        v_message->setMsg(rcc_route_table->getLinkState().c_str());
+                        link_change = true;
                     }
-                    // Add to message queue.
-                    pthread_mutex_lock(&buf_mutex);
-                    sending_msg_buf.push(v_message);
-                    pthread_cond_signal(&buf_cond);
-                    pthread_mutex_unlock(&buf_mutex);
-                    
                     
                     printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
@@ -529,6 +486,41 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     fflush(stdout);
                 }
             }
+        }
+        
+        
+        if (link_change) {
+            printf("Link change...\n");
+            VirtualMessage *v_message;
+            v_message = new VirtualMessage();
+            if (routing_algo == VirtualRouter::LS) {
+                // Add a neighbor in route table.
+                // Transport link state to rcc.
+                v_message->setCode("000");
+                v_message->setSrc(SERVER_IP);
+                v_message->setDst("0.0.0.0");
+                v_message->setMsg(ls_route_table->getBroadcastMessage().c_str());
+            }
+            else if (routing_algo == VirtualRouter::DV) {
+                // Add a neighbor in route table.
+                v_message->setCode("100");
+                v_message->setSrc(SERVER_IP);
+                v_message->setDst("0.0.0.0");
+                v_message->setMsg(dv_route_table->linkState().c_str());
+            }
+            else if (routing_algo == VirtualRouter::RCC) {
+                // Add a neighbor in route table.
+                v_message->setCode("400");
+                v_message->setSrc(SERVER_IP);
+                v_message->setDst(RCC_IP);
+                v_message->setMsg(rcc_route_table->getLinkState().c_str());
+            }
+            // Add to message queue.
+            pthread_mutex_lock(&buf_mutex);
+            printf("Sending Link change message...\n");
+            sending_msg_buf.push(v_message);
+            pthread_cond_signal(&buf_cond);
+            pthread_mutex_unlock(&buf_mutex);
         }
         // 1 sec = 1000 ms = 1000000 us
         // 5000000 us = 5 sec

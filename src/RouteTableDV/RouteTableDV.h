@@ -44,11 +44,11 @@ private:
   //same as DVTalbe, just the next_ip has some change;
   vector<struct DVTableItem> route_table;
     
-  // Encode.
-  string encode();
     
   // Decode.
   vector<pair<string, int>> decode(string table_msg);
+  // Encode.
+  string encode();
     
   // Update route table.
   void updateRouteTable();
@@ -60,8 +60,9 @@ public:
   // 获取邻居的路由变化信息, 返回自己到其他路由跳数信息，如果自己到其他路由的跳数没变，则返回“”空字符。
   string routeChangeMessage(const char* neighbor_ip, string change);
   //连接邻居时更新路由表，同时返回自己到其他路由跳数信息
-  string removeNeighbor(const char* neighbor_ip);
-  string addNeighbor(const char* neighbor_ip);
+  bool removeNeighbor(const char* neighbor_ip);
+  bool addNeighbor(const char* neighbor_ip);
   void print(); //show route message right now.
+  string linkState();
 };
 #endif
