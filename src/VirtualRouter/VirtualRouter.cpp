@@ -548,18 +548,18 @@ void VirtualRouter::rebuildNeighborSocket(int i){
         throw(new exception());
     }
     // Make socket can reuse the same port.
-    int opt = 1;
-    if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
-        perror("setsockopt");
-        throw(new exception());
-    }
+    // int opt = 1;
+    // if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
+    //     perror("setsockopt");
+    //     throw(new exception());
+    // }
     // bind !!!must use ::bind , for std::bind is default.
     // Just bind socket with address.
-    socklen_t addrlen = sizeof(struct sockaddr);
-    if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
-        perror("bind fail");
-        throw(new exception());
-    }
+    // socklen_t addrlen = sizeof(struct sockaddr);
+    // if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
+    //     perror("bind fail");
+    //     throw(new exception());
+    // }
     close(neighbor_list[i].client_socket);
     neighbor_list[i].client_socket = client_socket;
 }
@@ -623,18 +623,18 @@ void VirtualRouter::bindClientSocket() {
             throw(new exception());
         }
         // Make socket can reuse the same port.
-        int opt = 1;
-        if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
-            perror("setsockopt");
-            throw(new exception());
-        }
+        // int opt = 1;
+        // if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
+        //     perror("setsockopt");
+        //     throw(new exception());
+        // }
         // bind !!!must use ::bind , for std::bind is default.
         // Just bind socket with address.
-        socklen_t addrlen = sizeof(struct sockaddr);
-        if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
-            perror("bind fail");
-            throw(new exception());
-        }
+        // socklen_t addrlen = sizeof(struct sockaddr);
+        // if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
+        //     perror("bind fail");
+        //     throw(new exception());
+        // }
         
         neighbor_list[i].client_socket = client_socket;
     }
