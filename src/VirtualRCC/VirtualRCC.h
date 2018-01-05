@@ -103,6 +103,7 @@ private:
     static int neighbor_count;
 
     static queue<VirtualMessage*> sending_msg_buf;
+    static pthread_mutex_t rcc_mutex;
     static pthread_mutex_t buf_mutex;
     static pthread_cond_t buf_cond;
     static char* transport_result;

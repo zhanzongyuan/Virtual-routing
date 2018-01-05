@@ -317,6 +317,8 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 continue;
             }
             
+            // Response request.
+            send(session_socket, "301", 4, 0);
             
             // Decode receive message.
             VirtualMessage *v_message = new VirtualMessage();
@@ -394,8 +396,6 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 delete v_message;
             }
             
-            // Response request.
-            send(session_socket, "301", 4, 0);
             
             // Reflesh input to screen.
             printf("\nrouter@name# ");

@@ -61,15 +61,16 @@ void RouteTableLS::findNextIP(char next_ip[], const char *dst_ip)
   string nxtAdd, glAdd;
   for (int i = 1; i < ip_num; i++) //Printing final shortest distances from source
   {
-    int cost;
     if (isRemove[mRouter[mNeighbor[i]]] || mRouter[mNeighbor[i]] != i + 1)
       continue;
     glAdd = mNeighbor[i];
-    if (strcmp(glAdd.c_str(), dst_ip) && dis[mRouter[mNeighbor[i]]] != INF) {
+    if (!strcmp(glAdd.c_str(), dst_ip) && dis[mRouter[mNeighbor[i]]] != INF)
+    {
       if (vi[mRouter[mNeighbor[i]]].size() > 1)
         nxtAdd = vi[mRouter[mNeighbor[i]]][1];
       else
         nxtAdd = mNeighbor[i];
+      break;
     }
   }
   strncpy(next_ip, nxtAdd.c_str(), 16);
@@ -92,14 +93,19 @@ void RouteTableLS::printRouteTableLS()
     if (dis[mRouter[mNeighbor[i]]] != INF)
     {
       cost = dis[mRouter[mNeighbor[i]]];
+      /*
       if (vi[mRouter[mNeighbor[i]]].size() > 1)
         nxtAdd = vi[mRouter[mNeighbor[i]]][1];
       else
         nxtAdd = mNeighbor[i];
+      */
     }
     else
       cost = 0;
-    printf("%17s|%17s|%5d\n", nxtAdd.c_str(), glAdd.c_str(), cost-1);
+    char tmp[16];
+    findNextIP(tmp, glAdd.c_str());
+    printf("%17s|%17s|%5d\n", tmp, glAdd.c_str(), cost-1);
+    //printf("%17s|%17s|%5d\n", nxtAdd.c_str(), glAdd.c_str(), cost-1);
   }
   cout << endl;
 }

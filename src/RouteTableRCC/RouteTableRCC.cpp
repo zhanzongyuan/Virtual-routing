@@ -4,10 +4,15 @@ RouteTableRCC::RouteTableRCC(const char* host_ip, bool RCC_mode) {
     this->host_ip = string(host_ip);
     this->RCC_mode = RCC_mode;
     str_table = "";
+    dirty = false;
 }
 
 // RCC
 string RouteTableRCC::getRouterTable(const char* ip) {
+    if (dirty) {
+        printf("Please update route table first! [updateRouteTable()]\n");
+        return "";
+    }
     if (RCC_mode) {
         int index = -1;
         for (int i = 0; i<routers.size(); i++) {
@@ -50,12 +55,14 @@ void RouteTableRCC::updateRouteTable() {
             for (int j = 0; j < routers.size(); j++) {
                 if (in_set[j]) {
                     for (int p = 0; p < graph[j].size(); p++) {
-                        if (!in_set[graph[j][p]] && dst[graph[j][p]] > dst[j] + 1) {
-                            dst[p] = dst[j] + 1;
-                            pre[p] = j;
-                            if (dst[p] > min) {
-                                min = dst[p];
-                                index = p;
+                        if (!in_set[graph[j][p]]) {
+                            if (dst[graph[j][p]] > dst[j] + 1) {
+                                dst[graph[j][p]] = dst[j] + 1;
+                                pre[graph[j][p]] = j;
+                            }
+                            if (dst[graph[j][p]] < min) {
+                                min = dst[graph[j][p]];
+                                index = graph[j][p];
                             }
                         }
                     }
@@ -64,6 +71,7 @@ void RouteTableRCC::updateRouteTable() {
             if (index == -1) break;
             in_set[index] = true;
             set_num++;
+            
         }
         
         // Update route table.
@@ -76,6 +84,7 @@ void RouteTableRCC::updateRouteTable() {
             }
         }
     }
+    dirty = false;
 }
 void RouteTableRCC::addLinkState(const char* router_ip, string message) {
     if (RCC_mode) {
@@ -92,7 +101,6 @@ void RouteTableRCC::addLinkState(const char* router_ip, string message) {
             routers_table.push_back(vector<struct route>());
         }
         decodeLinkState(index, message);
-        
         updateRouteTable();
     }
 }
@@ -136,6 +144,7 @@ void RouteTableRCC::decodeLinkState(int index, string message) {
             ip += message[i];
         }
     }
+    dirty = true;
 }
 
 // Router
@@ -209,6 +218,10 @@ void RouteTableRCC::print() {
         printf("\n");
     }
     else {
+        if (dirty) {
+            printf("Please update route table first! [updateRouteTable()]\n");
+            return;
+        }
         printf("\n");
         printf("          Router ip  |    Destination ip  |  Next ip  \n");
         printf("---------------------|--------------------|--------------------\n");
@@ -228,4 +241,7 @@ void RouteTableRCC::print() {
         }
     }
         
+}
+bool RouteTableRCC::isDirty() {
+    return dirty;
 }

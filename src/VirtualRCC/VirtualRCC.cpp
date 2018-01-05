@@ -10,6 +10,7 @@ struct neighbor_status* VirtualRCC::neighbor_list = NULL;
 queue<VirtualMessage*> VirtualRCC::sending_msg_buf = queue<VirtualMessage*>();
 int VirtualRCC::neighbor_count = 0;
 
+pthread_mutex_t VirtualRCC::rcc_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t VirtualRCC::buf_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t VirtualRCC::buf_cond = PTHREAD_COND_INITIALIZER;
 
@@ -135,8 +136,6 @@ void VirtualRCC::launchRouter() {
 void* VirtualRCC::sendData(void *fd) {
     // RCC send message to all neihgbor.
     char response[256];
-    char code[4];
-    vector<int> next_neighbor_index;
     char encode_message[VirtualMessage::STR_MSG_LEN];
     while (1) {
         pthread_mutex_lock(&buf_mutex);
@@ -147,12 +146,11 @@ void* VirtualRCC::sendData(void *fd) {
             
             // Encode message
             VirtualMessage::encode(sending_message, encode_message);
-            
-            next_neighbor_index.clear();
-            strncpy(code, sending_message->getCode(), 4);
-            // Put all index in vector.
+
             for (int i = 0; i < neighbor_count; i++)
-                if (neighbor_list[i].is_connected) {
+                if (neighbor_list[i].is_connected 
+                    && strncmp(sending_message->getDst(), neighbor_list[i].neighbor_ip, 16) == 0 ) {
+
                     send(neighbor_list[i].client_socket,
                          encode_message, VirtualMessage::STR_MSG_LEN, 0);
                     
@@ -248,13 +246,19 @@ void* VirtualRCC::receiveData(void *v_session_socket) {
                 continue;
             }
             
+            // Response request.
+            send(session_socket, "301", 4, 0);
+
             // Decode receive message.
             VirtualMessage *v_message = new VirtualMessage();
             VirtualMessage::decode(v_message, recvbuf);
             v_message->print();
             if (strncmp(recvbuf, "400", 3) == 0) {
                 // TODO: RCC update graph and renew table, put new table into queue.
+                pthread_mutex_lock(&rcc_mutex);
                 rcc_route_table->addLinkState(v_message->getSrc(), string(v_message->getMsg()));
+                pthread_mutex_unlock(&rcc_mutex);
+                
                 pthread_mutex_lock(&buf_mutex);
                 for (int i = 0; i < neighbor_count; i++) {
                     if (neighbor_list[i].is_connected) {
@@ -272,8 +276,6 @@ void* VirtualRCC::receiveData(void *v_session_socket) {
                 delete v_message;
             }
             
-            // Response request.
-            send(session_socket, "301", 4, 0);
             
             // Reflesh input to screen.
             printf("\nrouter@name# ");
@@ -295,6 +297,7 @@ void *VirtualRCC::detectNeighbor(void* fd){
     char response[256];
     while (1) {
         //printf("\nDetecting neighbors...\n");
+        bool is_change = false;
         for (int i = 0; i < neighbor_count; i++) {
             if (neighbor_list[i].is_connected) {
                 send(neighbor_list[i].client_socket, "300", 4, 0);
@@ -320,7 +323,19 @@ void *VirtualRCC::detectNeighbor(void* fd){
                 }
                 else {
                     neighbor_list[i].is_connected = true;
+
+                    // Send link state to neighbor.
+                    VirtualMessage *route_message = new VirtualMessage();
+                    route_message->setCode("400");
+                    route_message->setSrc(SERVER_IP);
+                    route_message->setDst(neighbor_list[i].neighbor_ip);
+                    route_message->setMsg(rcc_route_table->getRouterTable(neighbor_list[i].neighbor_ip).c_str());
                     
+                    pthread_mutex_lock(&buf_mutex);
+                    sending_msg_buf.push(route_message);
+                    pthread_cond_signal(&buf_cond);
+                    pthread_mutex_unlock(&buf_mutex);
+
                     printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
                     // Reflesh input to screen.
@@ -345,16 +360,16 @@ void VirtualRCC::rebuildNeighborSocket(int i){
         perror("create socket fail");
     }
     // Make socket can reuse the same port.
-    int opt = 1;
-    if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
-        perror("setsockopt");
-    }
+    // int opt = 1;
+    // if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
+    //     perror("setsockopt");
+    // }
     // bind !!!must use ::bind , for std::bind is default.
     // Just bind socket with address.
-    socklen_t addrlen = sizeof(struct sockaddr);
-    if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
-        perror("bind fail");
-    }
+    // socklen_t addrlen = sizeof(struct sockaddr);
+    // if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
+    //     perror("bind fail");
+    // }
     neighbor_list[i].client_socket = client_socket;
 }
 
@@ -433,18 +448,18 @@ void VirtualRCC::bindClientSocket() {
             throw(new exception());
         }
         // Make socket can reuse the same port.
-        int opt = 1;
-        if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
-            perror("setsockopt");
-            throw(new exception());
-        }
+        // int opt = 1;
+        // if(setsockopt(client_socket, SOL_SOCKET,SO_REUSEPORT, (const void *) &opt, sizeof(opt))){
+        //     perror("setsockopt");
+        //     throw(new exception());
+        // }
         // bind !!!must use ::bind , for std::bind is default.
         // Just bind socket with address.
-        socklen_t addrlen = sizeof(struct sockaddr);
-        if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
-            perror("bind fail");
-            throw(new exception());
-        }
+        // socklen_t addrlen = sizeof(struct sockaddr);
+        // if (::bind(client_socket, (struct sockaddr *)&client_address, addrlen)) {
+        //     perror("bind fail");
+        //     throw(new exception());
+        // }
         
         neighbor_list[i].client_socket = client_socket;
     }

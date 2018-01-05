@@ -26,11 +26,11 @@ private:
     bool RCC_mode;
     
     // RCC
+    bool dirty;
     vector<string> routers;
     vector<vector<struct route> > routers_table;
     vector<vector<int> > graph;
     void decodeLinkState(int index, string message);
-    void updateRouteTable();
     
     // Router
     vector<struct route> router_table;
@@ -44,6 +44,7 @@ public:
     // 获取该路由的路由表
     void addLinkState(const char* router_ip, string message);
     // 获取来自其他路由(不一定是邻居)广播的信息，信息说明该路由的连接状况。更新拓扑图，更新路由表。
+    void updateRouteTable();
     
     
     // Router
@@ -55,6 +56,7 @@ public:
     // 根据目的路由ip获取下一跳路由ip
     void renewRouteTable(string message);
     void print(); // 打印路由表
+    bool isDirty();
 };
 
 #endif
