@@ -139,6 +139,22 @@ void VirtualRouter::launchRouter() {
     // Input command to send message to other neighbor.
     commandIOManage();
     
+    pthread_cancel(receiving_thread);
+    pthread_cancel(detecting_thread);
+    pthread_cancel(sending_thread);
+    shutdown(server_socket, 2);
+    close(server_socket);
+    for (int i = 0; i < neighbor_count; i++) {
+        if (neighbor_list[i].is_connected) {
+            try {
+                shutdown(neighbor_list[i].client_socket, 2);
+                close(neighbor_list[i].client_socket);
+            }
+            catch (exception e) {
+                printf("%s\n", e.what());
+            }
+        }
+    }
     printf("Router done...\n");
     pthread_cancel(sending_thread);
     pthread_cancel(receiving_thread);
@@ -459,7 +475,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 // Try connect.
                 int client_socket = neighbor_list[i].client_socket;
                 if (connect(client_socket, (struct sockaddr*)&neighbor_list[i].neighbor_address, sizeof(sockaddr_in)) == -1) {
-                    //perror("connect fail");
+                    perror("connect fail");
                     neighbor_list[i].is_connected = false;
                     rebuildNeighborSocket(i);
                 }
@@ -544,6 +560,7 @@ void VirtualRouter::rebuildNeighborSocket(int i){
         perror("bind fail");
         throw(new exception());
     }
+    close(neighbor_list[i].client_socket);
     neighbor_list[i].client_socket = client_socket;
 }
 

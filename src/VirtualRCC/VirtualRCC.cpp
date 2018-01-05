@@ -110,6 +110,20 @@ void VirtualRCC::launchRouter() {
     // Input command to send message to other neighbor.
     commandIOManage();
     
+    pthread_cancel(receiving_thread);
+    pthread_cancel(detecting_thread);
+    pthread_cancel(sending_thread);
+    close(server_socket);
+    for (int i = 0; i < neighbor_count; i++) {
+        if (neighbor_list[i].is_connected) {
+            try {
+                close(neighbor_list[i].client_socket);
+            }
+            catch (exception e) {
+                printf("%s\n", e.what());
+            }
+        }
+    }
     printf("Router done...\n");
     pthread_cancel(sending_thread);
     pthread_cancel(receiving_thread);
