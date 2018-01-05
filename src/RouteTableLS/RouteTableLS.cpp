@@ -71,7 +71,8 @@ void RouteTableLS::findNextIP(char next_ip[], const char *dst_ip)
         nxtAdd = mNeighbor[i];
     }
   }
-  strncpy(next_ip, nxtAdd.c_str(), 16);
+  strncpy(next_ip, nxtAdd.c_str(), 16);  
+  cout << "next_ip : " << next_ip << endl;
   return;
 }
 
