@@ -57,7 +57,6 @@ void RouteTableLS::addRoute(const char *router_ip, string message)
 
 void RouteTableLS::findNextIP(char next_ip[], const char *dst_ip)
 {
-  cout << "destIP: " << dst_ip << endl;
   string nxtAdd, glAdd;
   for (int i = 1; i < ip_num; i++) //Printing final shortest distances from source
   {
@@ -74,7 +73,6 @@ void RouteTableLS::findNextIP(char next_ip[], const char *dst_ip)
     }
   }
   strncpy(next_ip, nxtAdd.c_str(), 16);
-  cout << "nextIP: " << next_ip << endl;
   return;
 }
 

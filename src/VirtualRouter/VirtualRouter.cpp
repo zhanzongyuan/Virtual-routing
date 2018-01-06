@@ -17,6 +17,8 @@ struct neighbor_status* VirtualRouter::neighbor_list = NULL;
 queue<VirtualMessage*> VirtualRouter::sending_msg_buf = queue<VirtualMessage*>();
 int VirtualRouter::neighbor_count = 0;
 
+
+pthread_mutex_t VirtualRouter::table_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t VirtualRouter::buf_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t VirtualRouter::buf_cond = PTHREAD_COND_INITIALIZER;
 
@@ -186,6 +188,7 @@ void* VirtualRouter::sendData(void *fd) {
             if (strncmp(sending_message->getDst(), "0.0.0.0", 16) != 0) {
                 
                 // Find next neighbor.
+                pthread_mutex_lock(&table_mutex);
                 if (routing_algo == VirtualRouter::RCC) {
                     if (strncmp(sending_message->getDst(), RCC_IP, 16) != 0) {
                         rcc_route_table->findNextIP(next_neighbor_ip, sending_message->getDst());
@@ -196,6 +199,7 @@ void* VirtualRouter::sendData(void *fd) {
                     dv_route_table->findNextIP(next_neighbor_ip, sending_message->getDst());
                 else if (routing_algo == VirtualRouter::LS)
                     ls_route_table->findNextIP(next_neighbor_ip, sending_message->getDst());
+                pthread_mutex_unlock(&table_mutex);
 
 
                 if (next_neighbor_ip[0] != '\0') {
@@ -324,6 +328,8 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
             VirtualMessage *v_message = new VirtualMessage();
             VirtualMessage::decode(v_message, recvbuf);
             v_message->print();
+            
+            pthread_mutex_lock(&table_mutex);
             if (strncmp(recvbuf, "000", 3) == 0 || strncmp(recvbuf, "111", 3) == 0) {
                 // Broadcast, check if it has been broadcasted.
                 string src(v_message->getDst());
@@ -395,7 +401,7 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 rcc_route_table->renewRouteTable(string(v_message->getMsg()));
                 delete v_message;
             }
-            
+            pthread_mutex_unlock(&table_mutex);
             
             // Reflesh input to screen.
             printf("\nrouter@name# ");
@@ -422,6 +428,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
             if (neighbor_list[i].is_connected) {
                 send(neighbor_list[i].client_socket, "300", 4, 0);
                 
+                pthread_mutex_lock(&table_mutex);
                 if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
                     close(neighbor_list[i].client_socket);
                     rebuildNeighborSocket(i);
@@ -486,9 +493,11 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     fflush(stdout);
                 }
             }
+            pthread_mutex_unlock(&table_mutex);
         }
         
         
+        pthread_mutex_lock(&table_mutex);
         if (link_change) {
             printf("Link change...\n");
             VirtualMessage *v_message;
@@ -522,6 +531,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
             pthread_cond_signal(&buf_cond);
             pthread_mutex_unlock(&buf_mutex);
         }
+        pthread_mutex_unlock(&table_mutex);
         // 1 sec = 1000 ms = 1000000 us
         // 5000000 us = 5 sec
         usleep(3000000);
