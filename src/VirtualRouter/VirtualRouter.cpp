@@ -175,7 +175,9 @@ void* VirtualRouter::sendData(void *fd) {
     while (1) {
         pthread_mutex_lock(&buf_mutex);
         pthread_cond_wait(&buf_cond, &buf_mutex);
+        printf("SEND lock\n");
         while (sending_msg_buf.size() != 0) {
+            printf("SEND while %d\n", int(sending_msg_buf.size()));
             VirtualMessage* sending_message = sending_msg_buf.front();
             sending_msg_buf.pop();
             
@@ -188,7 +190,9 @@ void* VirtualRouter::sendData(void *fd) {
             if (strncmp(sending_message->getDst(), "0.0.0.0", 16) != 0) {
                 
                 // Find next neighbor.
+                cout << "debug: table_mutex ready" << endl;
                 pthread_mutex_lock(&table_mutex);
+                cout << "debug: table_mutex in" << endl;
                 if (routing_algo == VirtualRouter::RCC) {
                     if (strncmp(sending_message->getDst(), RCC_IP, 16) != 0) {
                         rcc_route_table->findNextIP(next_neighbor_ip, sending_message->getDst());
@@ -200,6 +204,7 @@ void* VirtualRouter::sendData(void *fd) {
                 else if (routing_algo == VirtualRouter::LS)
                     ls_route_table->findNextIP(next_neighbor_ip, sending_message->getDst());
                 pthread_mutex_unlock(&table_mutex);
+                cout << "debug: table_mutex out" << endl;
 
 
                 if (next_neighbor_ip[0] != '\0') {
@@ -221,10 +226,17 @@ void* VirtualRouter::sendData(void *fd) {
             if (next_neighbor_index.size() != 0) {
                 for (int i = 0; i < next_neighbor_index.size(); i++)
                     if (neighbor_list[next_neighbor_index[i]].is_connected) {
+                        
+                        // lock socket.
+                        pthread_mutex_lock(&table_mutex);
+                        printf("Send->%d\n", i);
                         send(neighbor_list[next_neighbor_index[i]].client_socket,
                              encode_message, VirtualMessage::STR_MSG_LEN, 0);
+                        printf("Send->%d end\n", i);
                         
                         if (recv(neighbor_list[next_neighbor_index[i]].client_socket, response, 256, 0) <= 0) {
+                            pthread_mutex_unlock(&table_mutex);
+                            
                             // If send data error, it infer that the neighbor host is done.
                             rebuildNeighborSocket(next_neighbor_index[i]);
                             neighbor_list[i].is_connected = false;
@@ -237,6 +249,8 @@ void* VirtualRouter::sendData(void *fd) {
                             strncpy(transport_result+result_len, " is done", 256-result_len);
                         }
                         else {
+                            pthread_mutex_unlock(&table_mutex);
+                            
                             strncpy(transport_result, "Send message successfully to ", 256);
                             size_t result_len = strlen(transport_result);
                             strncpy(transport_result+result_len, neighbor_list[next_neighbor_index[i]].neighbor_ip, 256-result_len);
@@ -258,6 +272,7 @@ void* VirtualRouter::sendData(void *fd) {
             delete sending_message;
         }
         pthread_mutex_unlock(&buf_mutex);
+        printf("DEBUG unlock\n");
     }
 }
 
@@ -349,22 +364,22 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 }
                 
                 if (v_message != NULL) {
-                    printf("DEBUG: addRoute start.\n");
                     // TODO: LS update graph and route table.
                     pthread_mutex_lock(&table_mutex);
                     if (strncmp(recvbuf, "000", 3) == 0)
                         ls_route_table->addRoute(v_message->getSrc(), v_message->getMsg());
-                    printf("DEBUG: addRoute end.\n");
                     pthread_mutex_unlock(&table_mutex);
 
                     
                     // Add to message queue.
                     pthread_mutex_lock(&buf_mutex);
+                    printf("%d DEBUG: addRoute lock.\n", session_socket);
                     sending_msg_buf.push(v_message);
                     pthread_cond_signal(&buf_cond);
                     pthread_mutex_unlock(&buf_mutex);
+                    
+                    printf("%d DEBUG: addRoute unlock.\n", session_socket);
                 }
-                printf("DEBUG: addRoute end.\n");
             }
             else if (strncmp(recvbuf, "100", 3) == 0) {
                 // mode = Distance Vector
@@ -434,9 +449,14 @@ void *VirtualRouter::detectNeighbor(void* fd){
         
         for (int i = 0; i < neighbor_count; i++) {
             if (neighbor_list[i].is_connected) {
+                
+                // Lock client_socket.
+                pthread_mutex_lock(&table_mutex);
                 send(neighbor_list[i].client_socket, "300", 4, 0);
                 
                 if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
+                    pthread_mutex_unlock(&table_mutex);
+                    
                     close(neighbor_list[i].client_socket);
                     rebuildNeighborSocket(i);
                     neighbor_list[i].is_connected = false;
@@ -468,6 +488,8 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 }
             }
             else {
+                pthread_mutex_unlock(&table_mutex);
+                
                 // Try connect.
                 int client_socket = neighbor_list[i].client_socket;
                 if (connect(client_socket, (struct sockaddr*)&neighbor_list[i].neighbor_address, sizeof(sockaddr_in)) == -1) {
