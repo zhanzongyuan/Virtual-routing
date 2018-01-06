@@ -66,6 +66,7 @@ struct neighbor_status {
     struct sockaddr_in neighbor_address;  // Neigbor address used to send msg.
     int client_socket;
     bool is_connected;
+    pthread_mutex_t mutex;
     // TODO: Record time when detect neighbor that can be used to judge if timeout.
     
 };
