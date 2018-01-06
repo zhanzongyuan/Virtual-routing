@@ -10,8 +10,11 @@
 #include "VirtualRCC/VirtualRCC.h"
 
 int main(int argc, const char * argv[]) {
-    VirtualRCC rcc("127.0.0.1", 2341, 23333);
-    rcc.addNeighborRouter("127.0.0.1", 2333);
+    VirtualRCC rcc("192.168.43.230", 2343, 23333);
+    rcc.addNeighborRouter("192.168.43.191", 2343);
+    rcc.addNeighborRouter("192.168.43.220", 2343);
+    rcc.addNeighborRouter("192.168.43.235", 2343);
+    rcc.addNeighborRouter("192.168.43.17", 2343);
     // VirtualRCC rcc("192.168.43.230", 2341, 23333);
     // rcc.addNeighborRouter("192.168.43.191", 2341);
     // rcc.addNeighborRouter("192.168.43.235", 2336);

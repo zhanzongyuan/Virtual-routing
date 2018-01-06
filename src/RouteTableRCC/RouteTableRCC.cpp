@@ -188,6 +188,7 @@ void RouteTableRCC::findNextIP(char next_ip[], const char* dst_ip) {
 void RouteTableRCC::renewRouteTable(string message) {
     // Decode route table.
     if (message == str_table) return;
+    router_table.clear();
     string ip = "";
     for (int i = 0; i < message.size(); i++) {
         if (message[i] == '&') {
@@ -204,6 +205,7 @@ void RouteTableRCC::renewRouteTable(string message) {
             ip += message[i];
         }
     }
+    str_table = message;
 }
 void RouteTableRCC::print() {
     // Print route table.
