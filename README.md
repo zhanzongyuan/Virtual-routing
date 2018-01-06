@@ -101,7 +101,7 @@ router1.addNeighborRouter("192.168.43.235", 2346);
 router1.launchRouter();
 ```
 
-Router control center config as follows:
+Router control center config (in file `launch-rcc.cpp`) as follows:
 
 ```c++
 // rcc router config
