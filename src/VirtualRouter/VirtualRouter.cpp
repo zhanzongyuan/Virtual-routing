@@ -568,7 +568,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
         }
         // 1 sec = 1000 ms = 1000000 us
         // 5000000 us = 5 sec
-        usleep(3000000);
+        usleep(5000000);
     }
 }
 

@@ -204,7 +204,7 @@ bool RouteTableDV::addNeighbor(const char* neighbor_ip) {
             break;
         }
     }
-    if (index != -1) {
+    if (index == -1) {
         router_list.push_back(nei_str);
         for (int i = 0; i < neighbor_list.size(); i++) {
             cost_table[i].push_back(INT_MAX);
@@ -216,6 +216,7 @@ bool RouteTableDV::addNeighbor(const char* neighbor_ip) {
     cost_table[0][index] = 1;
     cost_table[neighbor_list.size()-1][0] = 1;
     cost_table[neighbor_list.size()-1][index] = 0;
+    
     updateRouteTable();
     
     return true;
