@@ -462,7 +462,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 // Try connect.
                 int client_socket = neighbor_list[i].client_socket;
                 if (connect(client_socket, (struct sockaddr*)&neighbor_list[i].neighbor_address, sizeof(sockaddr_in)) == -1) {
-                    perror("connect fail");
+                    //perror("connect fail");
                     neighbor_list[i].is_connected = false;
                     rebuildNeighborSocket(i);
                 }
