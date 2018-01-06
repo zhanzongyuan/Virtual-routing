@@ -335,32 +335,34 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 string src(v_message->getDst());
                 string msg(v_message->getMsg());
                 
-                // TODO: LS update graph and route table.
-                if (strncmp(recvbuf, "000", 3) == 0)
-                    ls_route_table->addRoute(v_message->getSrc(), v_message->getMsg());
-                
                 if (broadcast_mark.find(src) == broadcast_mark.end()) {
                     // First get broadcast message.
                     broadcast_mark.insert(pair<string, string>(src, msg));
-                    // Add to message queue.
-                    pthread_mutex_lock(&buf_mutex);
-                    sending_msg_buf.push(v_message);
-                    pthread_cond_signal(&buf_cond);
-                    pthread_mutex_unlock(&buf_mutex);
                 }
                 else if (broadcast_mark.find(src)->second != msg) {
                     // Get new broadcast message.
                     broadcast_mark.find(src)->second = msg;
+                }
+                else {
+                    // Do nothing, drop package.
+                    delete v_message;
+                    v_message = NULL;
+                }
+                
+                if (v_message != NULL) {
+                    printf("DEBUG: addRoute start.\n");
+                    // TODO: LS update graph and route table.
+                    if (strncmp(recvbuf, "000", 3) == 0)
+                        ls_route_table->addRoute(v_message->getSrc(), v_message->getMsg());
+                    printf("DEBUG: addRoute end.\n");
+                    
                     // Add to message queue.
                     pthread_mutex_lock(&buf_mutex);
                     sending_msg_buf.push(v_message);
                     pthread_cond_signal(&buf_cond);
                     pthread_mutex_unlock(&buf_mutex);
                 }
-                else {
-                    // Do nothing, drop package.
-                    delete v_message;
-                }
+                printf("DEBUG: addRoute end.\n");
             }
             else if (strncmp(recvbuf, "100", 3) == 0) {
                 // mode = Distance Vector
