@@ -338,7 +338,7 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
             }
             
             // Response request.
-            send(session_socket, "301", 4, 0);
+//            send(session_socket, "301", 4, 0);
             
             // Decode receive message.
             VirtualMessage *v_message = new VirtualMessage();
