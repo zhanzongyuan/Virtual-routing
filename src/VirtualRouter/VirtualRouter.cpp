@@ -329,7 +329,6 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
             VirtualMessage::decode(v_message, recvbuf);
             v_message->print();
             
-            pthread_mutex_lock(&table_mutex);
             if (strncmp(recvbuf, "000", 3) == 0 || strncmp(recvbuf, "111", 3) == 0) {
                 // Broadcast, check if it has been broadcasted.
                 string src(v_message->getDst());
@@ -352,9 +351,12 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
                 if (v_message != NULL) {
                     printf("DEBUG: addRoute start.\n");
                     // TODO: LS update graph and route table.
+                    pthread_mutex_lock(&table_mutex);
                     if (strncmp(recvbuf, "000", 3) == 0)
                         ls_route_table->addRoute(v_message->getSrc(), v_message->getMsg());
                     printf("DEBUG: addRoute end.\n");
+                    pthread_mutex_unlock(&table_mutex);
+
                     
                     // Add to message queue.
                     pthread_mutex_lock(&buf_mutex);
@@ -367,8 +369,11 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
             else if (strncmp(recvbuf, "100", 3) == 0) {
                 // mode = Distance Vector
                 // TODO: Neighbor change route table, decode msg to route and update route table.
+                pthread_mutex_lock(&table_mutex);
                 string route_change = dv_route_table->routeChangeMessage(v_message->getSrc(),
                                                                          string(v_message->getMsg()));
+                pthread_mutex_unlock(&table_mutex);
+
                 
                 if (route_change.size() != 0) {
                     // If route change tell neighbor.
@@ -400,10 +405,11 @@ void* VirtualRouter::receiveData(void *v_session_socket) {
             }
             else if (strncmp(recvbuf, "400", 3) == 0) {
                 // TODO: CENTER mode
+                pthread_mutex_lock(&table_mutex);
                 rcc_route_table->renewRouteTable(string(v_message->getMsg()));
+                pthread_mutex_unlock(&table_mutex);
                 delete v_message;
             }
-            pthread_mutex_unlock(&table_mutex);
             
             // Reflesh input to screen.
             printf("\nrouter@name# ");
@@ -430,12 +436,12 @@ void *VirtualRouter::detectNeighbor(void* fd){
             if (neighbor_list[i].is_connected) {
                 send(neighbor_list[i].client_socket, "300", 4, 0);
                 
-                pthread_mutex_lock(&table_mutex);
                 if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
                     close(neighbor_list[i].client_socket);
                     rebuildNeighborSocket(i);
                     neighbor_list[i].is_connected = false;
                     
+                    pthread_mutex_lock(&table_mutex);
                     // Remove neighbor.
                     if (routing_algo == VirtualRouter::LS) {
                         // Delete a neighbor in route table.
@@ -453,6 +459,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                             rcc_route_table->removeNeighbor(neighbor_list[i].neighbor_ip);
                         link_change = true;
                     }
+                    pthread_mutex_unlock(&table_mutex);
                     
                     printf("Neighbor %s done.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
@@ -471,6 +478,8 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 else {
                     neighbor_list[i].is_connected = true;
                     
+                    
+                    pthread_mutex_lock(&table_mutex);
                     // Transport link state to rcc.
                     if (routing_algo == VirtualRouter::LS) {
                         // Add a neighbor in route table.
@@ -488,6 +497,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                             rcc_route_table->addNeighbor(neighbor_list[i].neighbor_ip);
                         link_change = true;
                     }
+                    pthread_mutex_unlock(&table_mutex);
                     
                     printf("Connect neighbor %s successfully.\n", neighbor_list[i].neighbor_ip);
                     printf("router@name# ");
@@ -495,15 +505,14 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     fflush(stdout);
                 }
             }
-            pthread_mutex_unlock(&table_mutex);
         }
         
         
-        pthread_mutex_lock(&table_mutex);
         if (link_change) {
             printf("Link change...\n");
             VirtualMessage *v_message;
             v_message = new VirtualMessage();
+            pthread_mutex_lock(&table_mutex);
             if (routing_algo == VirtualRouter::LS) {
                 // Add a neighbor in route table.
                 // Transport link state to rcc.
@@ -526,6 +535,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                 v_message->setDst(RCC_IP);
                 v_message->setMsg(rcc_route_table->getLinkState().c_str());
             }
+            pthread_mutex_unlock(&table_mutex);
             // Add to message queue.
             pthread_mutex_lock(&buf_mutex);
             printf("Sending Link change message...\n");
@@ -533,7 +543,6 @@ void *VirtualRouter::detectNeighbor(void* fd){
             pthread_cond_signal(&buf_cond);
             pthread_mutex_unlock(&buf_mutex);
         }
-        pthread_mutex_unlock(&table_mutex);
         // 1 sec = 1000 ms = 1000000 us
         // 5000000 us = 5 sec
         usleep(3000000);

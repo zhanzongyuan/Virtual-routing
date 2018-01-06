@@ -190,7 +190,7 @@ bool RouteTableDV::addNeighbor(const char* neighbor_ip) {
     string nei_str = string(neighbor_ip);
     
     for (int i = 0; i < neighbor_list.size(); i++) {
-        if (neighbor_list[i] == nei_str) return false;
+        if (neighbor_list[i] == nei_str) return true;
     }
     
     neighbor_list.push_back(nei_str);
