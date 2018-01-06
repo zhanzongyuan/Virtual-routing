@@ -229,33 +229,33 @@ void* VirtualRouter::sendData(void *fd) {
                     if (neighbor_list[next_neighbor_index[i]].is_connected) {
                         
                         // lock socket.
-                        pthread_mutex_lock(&neighbor_list[next_neighbor_index[i]].mutex);
+//                        pthread_mutex_lock(&neighbor_list[next_neighbor_index[i]].mutex);
                         printf("Send->%d\n", i);
                         send(neighbor_list[next_neighbor_index[i]].client_socket,
                              encode_message, VirtualMessage::STR_MSG_LEN, 0);
                         printf("Send->%d end\n", i);
                         
-                        if (recv(neighbor_list[next_neighbor_index[i]].client_socket, response, 256, 0) <= 0) {
-                            pthread_mutex_unlock(&neighbor_list[next_neighbor_index[i]].mutex);
+//                        if (recv(neighbor_list[next_neighbor_index[i]].client_socket, response, 256, 0) <= 0) {
+//                            pthread_mutex_unlock(&neighbor_list[next_neighbor_index[i]].mutex);
                             
                             // If send data error, it infer that the neighbor host is done.
-                            rebuildNeighborSocket(next_neighbor_index[i]);
-                            neighbor_list[i].is_connected = false;
-                            
+//                            rebuildNeighborSocket(next_neighbor_index[i]);
+//                            neighbor_list[i].is_connected = false;
+                        
                             // Sending result.
-                            strncpy(transport_result, "Error: Neighbor ", 256);
-                            size_t result_len = strlen(transport_result);
-                            strncpy(transport_result+result_len, neighbor_list[next_neighbor_index[i]].neighbor_ip, 256-result_len);
-                            result_len = strlen(transport_result);
-                            strncpy(transport_result+result_len, " is done", 256-result_len);
-                        }
-                        else {
-                            pthread_mutex_unlock(&neighbor_list[next_neighbor_index[i]].mutex);
+//                            strncpy(transport_result, "Error: Neighbor ", 256);
+//                            size_t result_len = strlen(transport_result);
+//                            strncpy(transport_result+result_len, neighbor_list[next_neighbor_index[i]].neighbor_ip, 256-result_len);
+//                            result_len = strlen(transport_result);
+//                            strncpy(transport_result+result_len, " is done", 256-result_len);
+//                        }
+//                        else {
+//                            pthread_mutex_unlock(&neighbor_list[next_neighbor_index[i]].mutex);
                             
                             strncpy(transport_result, "Send message successfully to ", 256);
                             size_t result_len = strlen(transport_result);
                             strncpy(transport_result+result_len, neighbor_list[next_neighbor_index[i]].neighbor_ip, 256-result_len);
-                        }
+//                        }
                     }
                     else {
                         strncpy(transport_result, "Error: Connect refused from ", 256);
@@ -452,11 +452,11 @@ void *VirtualRouter::detectNeighbor(void* fd){
             if (neighbor_list[i].is_connected) {
                 
                 // Lock client_socket.
-                pthread_mutex_lock(&neighbor_list[i].mutex);
+//                pthread_mutex_lock(&neighbor_list[i].mutex);
                 send(neighbor_list[i].client_socket, "300", 4, 0);
                 
                 if (recv(neighbor_list[i].client_socket, response, 256, 0) <= 0) {
-                    pthread_mutex_unlock(&neighbor_list[i].mutex);
+//                    pthread_mutex_unlock(&neighbor_list[i].mutex);
                     close(neighbor_list[i].client_socket);
                     
                     rebuildNeighborSocket(i);
@@ -487,7 +487,7 @@ void *VirtualRouter::detectNeighbor(void* fd){
                     // Reflesh input to screen.
                     fflush(stdout);
                 }
-                else pthread_mutex_unlock(&neighbor_list[i].mutex);
+//                else pthread_mutex_unlock(&neighbor_list[i].mutex);
             }
             else {
                 
